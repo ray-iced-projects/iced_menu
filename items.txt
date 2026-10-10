@@ -1,0 +1,93 @@
+File:
+
+New File
+New Window
+Open Folder
+Open Recent
+Save
+Save As...
+Save All
+Revert File
+Exit
+
+Edit:
+
+Undo
+Redo
+Cut
+Copy
+Paste
+Find
+Replace
+Find in Files
+Replace in Files
+
+Selection:
+
+Select All
+Expand Selection
+Shrink Selection
+Copy Line Up
+Copy Line Down
+Move Line Up
+Move Line Down
+Duplicate Selection
+
+View:
+
+Command Palette
+Open View
+Appearance
+Editor Layout
+Explorer
+Search
+Source Control
+Run and Debug
+Extensions
+Terminal
+Problems
+Output
+Debug Console
+Fullscreen
+Zen Mode
+Centered Layout
+
+Go:
+
+Go to File
+Go to Symbol in File
+Go to Line
+Go to Symbol
+Go to Definition
+Go to Type Definition
+Peek Definition
+
+Run:
+
+Start Debugging
+Continue
+Pause
+Stop
+Restart
+Step Over
+Step Into
+Step Out
+Run Without Debugging
+
+Terminal:
+
+New Terminal
+Split Terminal
+Run Active File
+Run Selected Text
+Toggle Terminal
+
+Help:
+
+Welcome
+Keyboard Shortcuts Reference
+Documentation
+GitHub Issues
+Report Issue
+Check for Updates
+About

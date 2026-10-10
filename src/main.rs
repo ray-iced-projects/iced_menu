@@ -1,7 +1,7 @@
 
 
-use iced::widget::{button, text, column, container, text_input};
-use iced::{Element, Fill, Task, Theme, Widget};
+use iced::widget::{button, text, column, container, row};
+use iced::{Element, Task, Theme, Widget};
 
 mod widgets;
 use crate::widgets::popover::{Popover, Position};
@@ -12,73 +12,145 @@ pub fn main() -> iced::Result {
     .run()
 }
 
-#[derive(Default)]
-struct App {
-    is_open: bool,
-    input_value: String,
+struct App<'a> {
+    is_open: Vec<bool>,
+    dropdown_labels: DropdownLabels<'a>,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
-    Close,
-    InputChanged(String),
-    OnSubmit,
+    Close(usize),
+    File(String),
 }
 
-impl App {
+impl <'a>App<'a> {
+    fn default() -> Self {
+        Self {
+            is_open: vec![false; 8],
+            dropdown_labels: DropdownLabels::default(),
+        }
+    }
+}
+
+impl <'a>App<'a> {
     
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Close => {
-                self.is_open = !self.is_open;
+            Message::Close(idx) => {
+                self.is_open[idx] = !self.is_open[idx];
                 Task::none()
-            }
-            Message::InputChanged(value) => {
-                self.input_value = value;
-                Task::none()
-            }
-            Message::OnSubmit => {
+            },
+            Message::File(label) => {
+                dbg!(&label);
                 Task::none()
             }
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
-        // The base is always present. The `popover` argument is `Some` when the
-        // popover is open and `None` when it is closed.
-        let input: Element<Message> = text_input("Some placeholder", &self.input_value)
-            .width(150.0)
-            .on_input(Message::InputChanged)
-            .on_submit(Message::OnSubmit)
-            .boxed();
-            
-        let popover_content: Option<Element<Message>> = if self.is_open {
+        
+        let mb = get_menu_bar(&self);
+        
+        container(mb)
+        .padding(10.0)
+        .boxed()
+
+    }
+}
+
+
+fn get_menu_bar<'a>(app: &'a App) -> Element<'a, Message> {
+
+    let labels = ["File", "Edit", "Selection", "View", "Go", "Run", "Terminal", "Help"];
+
+    let mut menu_bar = vec![];
+    
+    for (idx, label) in labels.iter().enumerate() {
+        let pop = match *label {
+            "File" => get_dropdown(app, idx, app.dropdown_labels.file.clone()),
+            "Edit" => get_dropdown(app, idx, app.dropdown_labels.edit.clone()),
+            _ => None
+        };
+        menu_bar.push(Popover::new(
+            button(text(*label))
+                    .on_press(Message::Close(idx))
+                    .style(move|theme, status|
+                            button::text(theme, status)
+                        )   
+                    .boxed(),
+            pop,
+        )
+        .gap(5.0)
+        .position(Position::Bottom)
+        .on_close(Message::Close(idx)).boxed());
+    }
+    
+    row(menu_bar).boxed()
+
+}
+
+
+struct DropdownLabels<'a> {
+    file: Vec<&'a str>,
+    edit: Vec<&'a str>,
+}
+
+impl <'a>DropdownLabels<'a> {
+    fn default() -> Self {
+        Self {
+            file: vec![
+                "New File", 
+                "New Window",
+                "Open Folder",
+                "Open Recent",
+                "Save",
+                "Save As...",
+                "Save All",
+                "Revert File",
+                "Exit",
+            ],
+            edit: vec![
+                "Undo",
+                "Redo",
+                "Cut",
+                "Copy",
+                "Paste",
+                "Find",
+                "Replace",
+                "Find in Files",
+                "Replace in Files",
+        ]
+        }
+    }
+}
+fn get_dropdown<'a>(app: &App, idx: usize, labels: Vec<&'a str>) 
+    -> Option<Element<'a, Message>> {
+
+    let mut btns = vec![];
+    
+    for label in labels {
+        btns.push(button(label)
+            .on_press(Message::File(label.to_string()))
+            .style(move|theme, status| 
+                button::text(theme, status))
+            .boxed())
+    }
+
+    let col = 
+        column(btns).boxed();
+    
+    let content = if app.is_open[idx] {
             Some(
-                container("This is the popover contents!")
+                container(col)
                     .width(200.0)
                     .height(200.0)
                     .padding(0)
-                    .style(move|theme| container::primary(theme))
+                    .style(move|theme| container::bordered_box(theme))
                     .boxed()
             )
         } else {
             None
         };
-        
-        let pop = Popover::new(
-            button(text("Click me!")).on_press(Message::Close).boxed(),
-            popover_content,
-        )
-        .gap(5.0)
-        .position(Position::Top)
-        .on_close(Message::Close).boxed();
-        
-        container(
-            column(vec![
-                input,
-                pop,
-            ])
-        ).center(Fill)
-        .boxed()
-    }
+
+    content
 }
