@@ -101,13 +101,20 @@ impl <'a>App<'a> {
             },
             Message::OpenSubmenuOnHover(path) => {
                 let path_clone = path.clone();
-                self.pending_submenu = Some(path);
+                self.pending_submenu = Some(path.clone());
                 self.pending_timer = Some(Instant::now());
+                
+                // Cancel any pending close timer for the currently open submenu
+                // This prevents parent from closing when entering a child submenu
+                if self.pending_close == Some(self.open_submenus.clone()) {
+                    self.pending_close = None;
+                    self.close_timer = None;
+                }
                 
                 // Spawn a background task that will send OpenSubmenuTimer after 500ms
                 Task::perform(
                     async move {
-                        // Sleep using a busy-wait loop (not ideal but works)
+                        // Sleep using a busy-wait loop
                         let start = Instant::now();
                         while start.elapsed() < Duration::from_millis(500) {
                             std::thread::sleep(Duration::from_millis(10));
@@ -145,8 +152,14 @@ impl <'a>App<'a> {
                 )
             },
             Message::CloseSubmenuAfterDelay(path) => {
-                if self.pending_close == Some(path) {
-                    self.open_submenus.clear();
+                if self.pending_close == Some(path.clone()) {
+                    // If open_submenus starts with our path, it means we're opening something deeper
+                    let is_opening_child = self.open_submenus.len() > path.len() && 
+                        self.open_submenus[0..path.len()] == path[..];
+                    
+                    if !is_opening_child {
+                        self.open_submenus.clear();
+                    }
                     self.pending_close = None;
                     self.close_timer = None;
                 }
@@ -267,6 +280,14 @@ impl <'a>DropdownLabels<'a> {
                     items: vec![
                         MenuItem::Item("Profile 1"),
                         MenuItem::Item("Profile 2"),
+                        MenuItem::SubMenu {
+                            label: "Additional Profiles >",
+                            items: vec![
+                                MenuItem::Item("Profile 3"),
+                                MenuItem::Item("Profile 4"),
+                                MenuItem::Item("Profile 5"),
+                            ],
+                        },
                     ],
                 },
                 MenuItem::Custom { key: "line" },
@@ -340,7 +361,10 @@ fn render_menu_with_subpopovers<'a>(
                 let mut submenu_path = current_path.clone();
                 submenu_path.push(idx);
                 
-                let is_open = open_submenus == submenu_path;
+                // A submenu is open if it matches open_submenus exactly, OR if open_submenus is deeper and this is an ancestor
+                let is_open = open_submenus == submenu_path || 
+                    (open_submenus.len() > submenu_path.len() && 
+                     open_submenus[0..submenu_path.len()] == submenu_path[..]);
                 
                 let submenu_content = if is_open {
                     let content = render_menu_with_subpopovers(
@@ -353,7 +377,8 @@ fn render_menu_with_subpopovers<'a>(
                     let leave_path = submenu_path.clone();
                     let enter_path = submenu_path.clone();
                     
-                    // Wrap content in mouse area first, THEN apply styling
+                    // Wrap content in mouse area first, then container for styling
+                    // Nee the ma for timing notifications.
                     let with_mouse_area = mouse_area(content)
                         .on_exit(Message::StartCloseSubmenuTimer(leave_path))
                         .on_enter(Message::CancelCloseSubmenuTimer(enter_path))
