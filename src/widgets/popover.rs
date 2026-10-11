@@ -107,6 +107,7 @@ where
     content: Element<'a, Message, Theme, Renderer>,
     popup: Option<Popup<'a, Message, Theme, Renderer>>,
     position: Position,
+    align: Alignment,
     gap: f32,
     snap_within_viewport: bool,
     on_close: Option<Message>,
@@ -135,6 +136,7 @@ where
             content: content.into(),
             popup: popover.map(|popup| Popup::Opaque(Opaque::new(popup))),
             position: Position::default(),
+            align: Alignment::default(),
             gap: 0.0,
             snap_within_viewport: true,
             on_close: None,
@@ -157,6 +159,16 @@ where
     /// places it on the side of the base with the most available space.
     pub fn position(mut self, position: Position) -> Self {
         self.position = position;
+        self
+    }
+
+    /// Sets the [`Alignment`] of the [`Popover`] relative to the positioned edge.
+    ///
+    /// By default, the [`Popover`] is aligned to [`Alignment::Center`].
+    /// - For vertical positions (Top/Bottom): controls horizontal alignment
+    /// - For horizontal positions (Left/Right): controls vertical alignment
+    pub fn align(mut self, align: Alignment) -> Self {
+        self.align = align;
         self
     }
 
@@ -327,8 +339,25 @@ where
 
         let popup_position = {
             let vp = Rectangle::with_size(window);
+            
+            // Calculate horizontal alignment for vertical positions
+            let x_aligned = match self.align {
+                Alignment::Start => content_bounds.x,
+                Alignment::Center => content_bounds.x + (content_bounds.width - popup_size.width) / 2.0,
+                Alignment::End => content_bounds.x + content_bounds.width - popup_size.width,
+            };
+            
+            // Calculate vertical alignment for horizontal positions
+            let y_aligned = match self.align {
+                Alignment::Start => content_bounds.y,
+                Alignment::Center => content_bounds.y + (content_bounds.height - popup_size.height) / 2.0,
+                Alignment::End => content_bounds.y + content_bounds.height - popup_size.height,
+            };
+            
+            // For backward compatibility, keep centered positioning for Auto position
             let x_center = content_bounds.x + (content_bounds.width - popup_size.width) / 2.0;
             let y_center = content_bounds.y + (content_bounds.height - popup_size.height) / 2.0;
+            
             let (x, y) = match self.position {
                 Position::Auto => {
                     let space_below = (vp.y + vp.height) - (content_bounds.y + content_bounds.height);
@@ -345,10 +374,10 @@ where
                         (content_bounds.x - popup_size.width - self.gap, y_center)
                     }
                 }
-                Position::Top => (x_center, content_bounds.y - popup_size.height - self.gap),
-                Position::Bottom => (x_center, content_bounds.y + content_bounds.height + self.gap),
-                Position::Left => (content_bounds.x - popup_size.width - self.gap, y_center),
-                Position::Right => (content_bounds.x + content_bounds.width + self.gap, y_center),
+                Position::Top => (x_aligned, content_bounds.y - popup_size.height - self.gap),
+                Position::Bottom => (x_aligned, content_bounds.y + content_bounds.height + self.gap),
+                Position::Left => (content_bounds.x - popup_size.width - self.gap, y_aligned),
+                Position::Right => (content_bounds.x + content_bounds.width + self.gap, y_aligned),
             };
             let mut pos = Point::new(x, y);
             if self.snap_within_viewport {
@@ -410,6 +439,23 @@ pub enum Position {
     Left,
     /// The popover will appear on the right of the widget.
     Right,
+}
+
+/// The alignment of the popover relative to the positioned edge.
+///
+/// When the popover is positioned vertically (Top/Bottom), this controls
+/// horizontal alignment (Start=left, End=right, Center=centered).
+/// When the popover is positioned horizontally (Left/Right), this controls
+/// vertical alignment (Start=top, End=bottom, Center=centered).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Alignment {
+    /// Align to the start (left for horizontal, top for vertical)
+    Start,
+    /// Align to the center
+    #[default]
+    Center,
+    /// Align to the end (right for horizontal, bottom for vertical)
+    End,
 }
 
 impl<'a, Message, Theme, Renderer> adv_widget::Meta for Popup<'a, Message, Theme, Renderer> where
