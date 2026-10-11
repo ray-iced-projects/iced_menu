@@ -1,11 +1,13 @@
 
 
-use iced::widget::{button, text, column, container, row, mouse_area};
-use iced::{Element, Task, Theme, Widget, Subscription};
+use iced::widget::{button, text, column, container, row, mouse_area, space};
+use iced::{Color, Element, Subscription, Task, Theme, Widget};
 use std::time::{Duration, Instant};
 
 mod widgets;
 use crate::widgets::popover::{Popover, Position, Alignment};
+use crate::widgets::custom_quad::CustomQuad;
+
 
 pub fn main() -> iced::Result {
     iced::application(App::default, App::update, App::view)
@@ -21,6 +23,9 @@ pub enum MenuItem<'a> {
     SubMenu {
         label: &'a str,
         items: Vec<MenuItem<'a>>,
+    },
+    Custom {
+        key: &'a str,
     },
 }
 
@@ -202,10 +207,22 @@ fn get_menu_bar<'a>(app: &'a App) -> Element<'a, Message> {
     for (idx, label) in labels.iter().enumerate() {
         let pop = match *label {
             "File" if app.is_open[idx] => {
-                Some(render_menu_with_subpopovers(&app.dropdown_labels.file, app.open_submenus.clone(), vec![idx], &app))
+                let content = render_menu_with_subpopovers(&app.dropdown_labels.file, app.open_submenus.clone(), vec![idx], &app);
+                Some(
+                    container(content)
+                        .style(|theme: &Theme| container::bordered_box(theme))
+                        .padding(5.0)
+                        .boxed()
+                )
             },
             "Edit" if app.is_open[idx] => {
-                Some(render_menu_with_subpopovers(&app.dropdown_labels.edit, app.open_submenus.clone(), vec![idx], &app))
+                let content = render_menu_with_subpopovers(&app.dropdown_labels.edit, app.open_submenus.clone(), vec![idx], &app);
+                Some(
+                    container(content)
+                        .style(|theme: &Theme| container::bordered_box(theme))
+                        .padding(5.0)
+                        .boxed()
+                )
             },
             _ => None,
         };
@@ -252,8 +269,17 @@ impl <'a>DropdownLabels<'a> {
                         MenuItem::Item("Profile 2"),
                     ],
                 },
+                MenuItem::Custom { key: "line" },
+                MenuItem::Item("Open File"),
                 MenuItem::Item("Open Folder"),
-                MenuItem::Item("Open Recent"),
+                MenuItem::Item("Open Wokspace from File"),
+                MenuItem::SubMenu {
+                    label: "Open Recent >",
+                    items: vec![
+                        MenuItem::Item("~/document/iced_menu"),
+                    ],
+                },
+                MenuItem::Custom { key: "line" },
                 MenuItem::Item("Save"),
                 MenuItem::Item("Save As..."),
                 MenuItem::Item("Save All"),
@@ -293,8 +319,22 @@ fn render_menu_with_subpopovers<'a>(
             MenuItem::Item(label) => {
                 button(text(*label))
                     .on_press(Message::File(label.to_string()))
-                    .style(|theme, status| button::text(theme, status))
+                    .style(|theme, status|
+                        button::text(theme, status))
                     .boxed()
+            }
+            MenuItem::Custom { key } => {
+                // Create custom widgets based on key
+                match *key {
+                    "line" => {
+                        get_line(200.0, 2.0, Color::from_rgba(1.0, 1.0, 1.0, 0.1))
+                            .boxed()
+                    }
+                    _ => {
+                        // Fallback for unknown keys
+                        space().boxed()
+                    }
+                }
             }
             MenuItem::SubMenu { label, items: sub_items } => {
                 let mut submenu_path = current_path.clone();
@@ -310,14 +350,22 @@ fn render_menu_with_subpopovers<'a>(
                         &app,
                     );
                     
-                    // Wrap content in mouse area to detect when leaving
                     let leave_path = submenu_path.clone();
                     let enter_path = submenu_path.clone();
                     
-                    Some(mouse_area(content)
+                    // Wrap content in mouse area first, THEN apply styling
+                    let with_mouse_area = mouse_area(content)
                         .on_exit(Message::StartCloseSubmenuTimer(leave_path))
                         .on_enter(Message::CancelCloseSubmenuTimer(enter_path))
-                        .boxed())
+                        .boxed();
+                    
+                    let styled_content = 
+                        container(with_mouse_area)
+                        .style(|theme: &Theme| container::bordered_box(theme))
+                        .padding(5.0)
+                        .boxed();
+                    
+                    Some(styled_content)
                 } else {
                     None
                 };
@@ -363,5 +411,14 @@ fn render_menu_with_subpopovers<'a>(
     column(buttons).boxed()
 }
 
-
-
+fn get_line(
+        width: f32,
+        height: f32,
+        fill_color: iced::Color) 
+        -> Element<'static, Message> {
+    
+    CustomQuad::new(
+        width, 
+        height, 
+        fill_color).boxed()
+}
