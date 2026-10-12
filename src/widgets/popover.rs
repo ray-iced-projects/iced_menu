@@ -55,7 +55,7 @@ use iced::advanced::widget::{self as adv_widget};
 use iced::mouse;
 use iced::touch;
 use iced::widget::Widget;
-use iced::{Element, Event, Length, Pixels, Point, Rectangle, Size, Vector, advanced::Shell};
+use iced::{Alignment, Element, Event, Length, Pixels, Point, Rectangle, Size, Vector, advanced::Shell};
 
 /// A floating piece of content that appears over another element.
 ///
@@ -136,7 +136,7 @@ where
             content: content.into(),
             popup: popover.map(|popup| Popup::Opaque(Opaque::new(popup))),
             position: Position::default(),
-            align: Alignment::default(),
+            align: Alignment::Start,
             gap: 0.0,
             snap_within_viewport: true,
             on_close: None,
@@ -439,23 +439,6 @@ pub enum Position {
     Left,
     /// The popover will appear on the right of the widget.
     Right,
-}
-
-/// The alignment of the popover relative to the positioned edge.
-///
-/// When the popover is positioned vertically (Top/Bottom), this controls
-/// horizontal alignment (Start=left, End=right, Center=centered).
-/// When the popover is positioned horizontally (Left/Right), this controls
-/// vertical alignment (Start=top, End=bottom, Center=centered).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Alignment {
-    /// Align to the start (left for horizontal, top for vertical)
-    Start,
-    /// Align to the center
-    #[default]
-    Center,
-    /// Align to the end (right for horizontal, bottom for vertical)
-    End,
 }
 
 impl<'a, Message, Theme, Renderer> adv_widget::Meta for Popup<'a, Message, Theme, Renderer> where

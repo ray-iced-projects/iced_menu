@@ -1,11 +1,11 @@
 
 
 use iced::widget::{button, text, column, container, row, mouse_area, space};
-use iced::{Color, Element, Subscription, Task, Theme, Widget};
+use iced::{Alignment, Color, Element, Subscription, Task, Theme, Widget};
 use std::time::{Duration, Instant};
 
 mod widgets;
-use crate::widgets::popover::{Popover, Position, Alignment};
+use crate::widgets::popover::{Popover, Position};
 use crate::widgets::custom_quad::CustomQuad;
 
 

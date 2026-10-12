@@ -4,9 +4,9 @@ This menu repo is not a library yet, just a proof of concept for a menu lib in t
 
 ## Features
 - ***Ease of maintaining updates***: uses two widgets maintained by Iced and no other special code.
-- **Submenus**: Unlimited nesting depth with popovers opening to the right
-- **Hover Navigation**: A delay on hover-to-open and hover-to-close for smooth interaction
-- **Custom Widgets**: Support for custom menu items (separators, dividers, etc.)
+- **Submenus**: Unlimited nesting depth with popovers opening to the right or whichever direction you chose.
+- **Hover Navigation**: A delay on hover-to-open and hover-to-close for smoothness
+- **Custom Widgets**: Support for custom menu items (separators, dividers, widgets, etc.)
 
 ## Usage
 
@@ -18,5 +18,5 @@ MenuItem::SubMenu { label: "Submenu >", items: vec![...] }  // Submenu with chil
 MenuItem::Custom { key: "line" }  // Custom widget (e.g., separator)
 ```
 
-## Clause help
-Implementing the timing delay and tracing the timing delay bugs. I have a similar widget in the IcedPyGui repo that I'm updating so most of the work was done (the concept anyway) except for no delay opening.  My PopUp I was using had some bugs and when I saw the popover widget in the iced branch, I had Claude modifiy it to use under the current Master branch and add the alignment which was trivial.
+## Claude help
+Implementing the timing delay and tracing the timing delay bugs. I have a similar widget in the IcedPyGui repo that I'm updating so most of the work was done except for no timing yet.  My PopUp I was using had some bugs so when I saw the popover widget in the iced branch, I had Claude modifiy it to use under the current Master branch and add the alignment which was trivial.
