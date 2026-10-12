@@ -17,12 +17,21 @@ pub fn main() -> iced::Result {
 }
 
 
+#[derive(Debug, Clone, Default)]
+pub struct MenuConfig<'a> {
+    pub items: Vec<MenuItem<'a>>,
+    pub width: f32,
+    pub gap: Option<f32>,
+    pub position: Option<Position>,
+    pub align: Option<Alignment>,
+}
+
 #[derive(Debug, Clone)]
 pub enum MenuItem<'a> {
     Item(&'a str),
     SubMenu {
         label: &'a str,
-        items: Vec<MenuItem<'a>>,
+        config: MenuConfig<'a>,
     },
     Custom {
         key: &'a str,
@@ -51,7 +60,7 @@ enum Message {
     OpenSubmenuOnHover(Vec<usize>),
     OpenSubmenuTimer(Vec<usize>),
     CancelSubmenuTimer(Vec<usize>),
-    File(String),
+    ItemPressed(String),
 }
 
 impl <'a>App<'a> {
@@ -158,7 +167,13 @@ impl <'a>App<'a> {
                         self.open_submenus[0..path.len()] == path[..];
                     
                     if !is_opening_child {
-                        self.open_submenus.clear();
+                        // Only close this submenu and its descendants, not parent submenus
+                        // If path is [0, 2], keep [0] open; if path is [0, 2, 2], keep [0, 2] open
+                        if path.len() > 0 {
+                            self.open_submenus.truncate(path.len() - 1);
+                        } else {
+                            self.open_submenus.clear();
+                        }
                     }
                     self.pending_close = None;
                     self.close_timer = None;
@@ -166,9 +181,14 @@ impl <'a>App<'a> {
                 Task::none()
             },
             Message::CancelCloseSubmenuTimer(path) => {
-                if self.pending_close == Some(path) {
-                    self.pending_close = None;
-                    self.close_timer = None;
+                // Cancel the timer if it matches this path, or if this path is an ancestor
+                // of the pending close (moving from child back into parent area)
+                if let Some(pending) = &self.pending_close {
+                    if *pending == path || 
+                       (pending.len() > path.len() && pending[0..path.len()] == path[..]) {
+                        self.pending_close = None;
+                        self.close_timer = None;
+                    }
                 }
                 Task::none()
             },
@@ -180,10 +200,7 @@ impl <'a>App<'a> {
                 self.close_timer = None;
                 Task::none()
             },
-            Message::File(label) => {
-                if label.is_empty() {
-                    return Task::none();
-                }
+            Message::ItemPressed(label) => {
                 dbg!(&label);
                 self.is_open.iter_mut().for_each(|o| *o = false);
                 self.open_submenus.clear();
@@ -265,81 +282,107 @@ fn get_menu_bar<'a>(app: &'a App) -> Element<'a, Message> {
 
 
 struct DropdownLabels<'a> {
-    file: Vec<MenuItem<'a>>,
-    edit: Vec<MenuItem<'a>>,
+    file: MenuConfig<'a>,
+    edit: MenuConfig<'a>,
 }
 
 impl <'a>DropdownLabels<'a> {
     fn default() -> Self {
         Self {
-            file: vec![
-                MenuItem::Item("New File"),
-                MenuItem::Item("New Window"),
-                MenuItem::SubMenu {
-                    label: "New Window with Profile >",
-                    items: vec![
-                        MenuItem::Item("Profile 1"),
-                        MenuItem::Item("Profile 2"),
-                        MenuItem::SubMenu {
-                            label: "Additional Profiles >",
+            file: MenuConfig {
+                width: 250.0,
+                items: vec![
+                    MenuItem::Item("New File"),
+                    MenuItem::Item("New Window"),
+                    MenuItem::SubMenu {
+                        label: "New Window with Profile >",
+                        config: MenuConfig {
+                            width: 200.0,
                             items: vec![
-                                MenuItem::Item("Profile 3"),
-                                MenuItem::Item("Profile 4"),
-                                MenuItem::Item("Profile 5"),
+                                MenuItem::Item("Profile 1"),
+                                MenuItem::Item("Profile 2"),
+                                MenuItem::SubMenu {
+                                    label: "Additional Profiles >",
+                                    config: MenuConfig {
+                                        width: 100.0,
+                                        items: vec![
+                                            MenuItem::Item("Profile 3"),
+                                            MenuItem::Item("Profile 4"),
+                                            MenuItem::Item("Profile 5"),
+                                        ],
+                                        ..Default::default()
+                                    },
+                                },
                             ],
+                            ..Default::default()
                         },
-                    ],
-                },
-                MenuItem::Custom { key: "line" },
-                MenuItem::Item("Open File"),
-                MenuItem::Item("Open Folder"),
-                MenuItem::Item("Open Wokspace from File"),
-                MenuItem::SubMenu {
-                    label: "Open Recent >",
-                    items: vec![
-                        MenuItem::Item("~/document/iced_menu"),
-                    ],
-                },
-                MenuItem::Custom { key: "line" },
-                MenuItem::Item("Save"),
-                MenuItem::Item("Save As..."),
-                MenuItem::Item("Save All"),
-                MenuItem::Item("Revert File"),
-                MenuItem::Item("Exit"),
-            ],
-            edit: vec![
-                MenuItem::Item("Undo"),
-                MenuItem::Item("Redo"),
-                MenuItem::Item("Cut"),
-                MenuItem::Item("Copy"),
-                MenuItem::Item("Paste"),
-                MenuItem::SubMenu {
-                    label: "Find >",
-                    items: vec![
-                        MenuItem::Item("Find"),
-                        MenuItem::Item("Find Next"),
-                        MenuItem::Item("Find Previous"),
-                    ],
-                },
-                MenuItem::Item("Replace"),
-                MenuItem::Item("Find in Files"),
-                MenuItem::Item("Replace in Files"),
-            ]
+                    },
+                    MenuItem::Custom { key: "line" },
+                    MenuItem::Item("Open File"),
+                    MenuItem::Item("Open Folder"),
+                    MenuItem::Item("Open Wokspace from File"),
+                    MenuItem::SubMenu {
+                        label: "Open Recent >",
+                        config: MenuConfig {
+                            width: 240.0,
+                            items: vec![
+                                MenuItem::Item("~/document/iced_menu"),
+                            ],
+                            ..Default::default()
+                        },
+                    },
+                    MenuItem::Custom { key: "line" },
+                    MenuItem::Item("Save"),
+                    MenuItem::Item("Save As..."),
+                    MenuItem::Item("Save All"),
+                    MenuItem::Item("Revert File"),
+                    MenuItem::Item("Exit"),
+                ],
+                ..Default::default()
+            },
+            edit: MenuConfig {
+                width: 150.0,
+                gap: None,
+                items: vec![
+                    MenuItem::Item("Undo"),
+                    MenuItem::Item("Redo"),
+                    MenuItem::Item("Cut"),
+                    MenuItem::Item("Copy"),
+                    MenuItem::Item("Paste"),
+                    MenuItem::SubMenu {
+                        label: "Find >",
+                        config: MenuConfig {
+                            width: 150.0,
+                            items: vec![
+                                MenuItem::Item("Find"),
+                                MenuItem::Item("Find Next"),
+                                MenuItem::Item("Find Previous"),
+                            ],
+                            ..Default::default()
+                        },
+                    },
+                    MenuItem::Item("Replace"),
+                    MenuItem::Item("Find in Files"),
+                    MenuItem::Item("Replace in Files"),
+                ],
+                ..Default::default()
+            }
         }
     }
 }
 /// Renders menu items with subpopovers for each submenu
 fn render_menu_with_subpopovers<'a>(
-    items: &'a [MenuItem<'a>],
+    config: &'a MenuConfig<'a>,
     open_submenus: Vec<usize>,
     current_path: Vec<usize>,
     app: &'a App,
 ) -> Element<'a, Message> {
-    let buttons: Vec<Element<'a, Message>> = items.iter().enumerate().map(|(idx, item)| {
+    let buttons: Vec<Element<'a, Message>> = config.items.iter().enumerate().map(|(idx, item)| {
         match item {
             MenuItem::Item(label) => {
                 button(text(*label))
-                    .on_press(Message::File(label.to_string()))
+                    .width(iced::Length::Fill)
+                    .on_press(Message::ItemPressed(label.to_string()))
                     .style(|theme, status|
                         button::text(theme, status))
                     .boxed()
@@ -348,27 +391,27 @@ fn render_menu_with_subpopovers<'a>(
                 // Create custom widgets based on key
                 match *key {
                     "line" => {
-                        get_line(200.0, 2.0, Color::from_rgba(1.0, 1.0, 1.0, 0.1))
+                        get_line(config.width - 10.0, 2.0, Color::from_rgba(1.0, 1.0, 1.0, 0.1))
                             .boxed()
                     }
                     _ => {
-                        // Fallback for unknown keys
+                        eprint!("Key not found");
                         space().boxed()
                     }
                 }
             }
-            MenuItem::SubMenu { label, items: sub_items } => {
+            MenuItem::SubMenu { label, config: sub_config } => {
                 let mut submenu_path = current_path.clone();
                 submenu_path.push(idx);
                 
-                // A submenu is open if it matches open_submenus exactly, OR if open_submenus is deeper and this is an ancestor
+                // A submenu is open if it matches open_submenus or if open_submenus is deeper and this is an ancestor
                 let is_open = open_submenus == submenu_path || 
                     (open_submenus.len() > submenu_path.len() && 
                      open_submenus[0..submenu_path.len()] == submenu_path[..]);
                 
                 let submenu_content = if is_open {
                     let content = render_menu_with_subpopovers(
-                        sub_items,
+                        sub_config,
                         open_submenus.clone(),
                         submenu_path.clone(),
                         &app,
@@ -378,7 +421,6 @@ fn render_menu_with_subpopovers<'a>(
                     let enter_path = submenu_path.clone();
                     
                     // Wrap content in mouse area first, then container for styling
-                    // Nee the ma for timing notifications.
                     let with_mouse_area = mouse_area(content)
                         .on_exit(Message::StartCloseSubmenuTimer(leave_path))
                         .on_enter(Message::CancelCloseSubmenuTimer(enter_path))
@@ -386,6 +428,7 @@ fn render_menu_with_subpopovers<'a>(
                     
                     let styled_content = 
                         container(with_mouse_area)
+                        .width(iced::Length::Fixed(sub_config.width))
                         .style(|theme: &Theme| container::bordered_box(theme))
                         .padding(5.0)
                         .boxed();
@@ -402,6 +445,7 @@ fn render_menu_with_subpopovers<'a>(
                 let close_path = submenu_path;
                 
                 let btn = button(text(*label))
+                    .width(iced::Length::Fill)
                     .on_press(Message::ToggleSubmenu(toggle_path))
                     .style(|theme, status| button::text(theme, status))
                     .boxed();
@@ -424,16 +468,18 @@ fn render_menu_with_subpopovers<'a>(
                     btn_with_mouse,
                     submenu_content,
                 )
-                .position(Position::Right)
-                .align(Alignment::Start)
-                .gap(0.0)
+                .position(config.position.unwrap_or(Position::Right))
+                .align(config.align.unwrap_or(Alignment::Start))
+                .gap(config.gap.unwrap_or_default())
                 .on_close(Message::CloseSubmenu(close_path))
                 .boxed()
             }
         }
     }).collect();
 
-    column(buttons).boxed()
+    container(column(buttons))
+        .width(iced::Length::Fixed(config.width))
+        .boxed()
 }
 
 fn get_line(
