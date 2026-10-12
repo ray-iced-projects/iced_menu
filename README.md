@@ -19,4 +19,4 @@ MenuItem::Custom { key: "line" }  // Custom widget (e.g., separator)
 ```
 
 ## Claude help
-Implementing the timing delay and tracing the timing delay bugs. I have a similar widget in the IcedPyGui repo that I'm updating so most of the work was done except for no timing yet.  My PopUp I was using had some bugs so when I saw the popover widget in the iced branch, I had Claude modifiy it to use under the current Master branch and add the alignment which was trivial.
+Implementing the timing delay and tracing the timing delay bugs (too hard for me to do). I have a similar widget in the IcedPyGui repo that I'm updating so most of the work was done except for no timing yet.  My PopUp I was using had some bugs so when I saw the popover widget in the iced branch, I had Claude modifiy it to use under the current Master branch and add the alignment which was trivial.
