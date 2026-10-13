@@ -8,29 +8,43 @@ mod widgets;
 use crate::widgets::popover::{Popover, Position};
 
 
-#[derive(Clone, Default)]
-pub struct MenuConfig<'a> {
+#[derive(Clone)]
+pub struct MenuConfig<'a, UserMsg = ()> {
     pub bar_label: &'a str,
-    pub items: Vec<MenuItem<'a>>,
+    pub items: Vec<MenuItem<'a, UserMsg>>,
     pub width: f32,
     pub gap: Option<f32>,
     pub position: Option<Position>,
     pub align: Option<Alignment>,
 }
 
+// Manual Default so UserMsg: Default is never required
+impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
+    fn default() -> Self {
+        MenuConfig {
+            bar_label: "",
+            items: Vec::new(),
+            width: 200.0,
+            gap: None,
+            position: None,
+            align: None,
+        }
+    }
+}
+
 #[derive(Clone)]
-pub enum MenuItem<'a> {
+pub enum MenuItem<'a, UserMsg = ()> {
     Item(&'a str),
     SubMenu {
         label: &'a str,
-        config: MenuConfig<'a>,
+        config: MenuConfig<'a, UserMsg>,
     },
-    Custom(Rc<dyn Fn() -> Element<'a, MenuMessage> + 'a>),
+    Custom(Rc<dyn Fn() -> Element<'a, MenuMessage<UserMsg>> + 'a>),
 }
 
 
-pub struct Menu<'a> {
-    pub configs: Vec<MenuConfig<'a>>,
+pub struct Menu<'a, UserMsg = ()> {
+    pub configs: Vec<MenuConfig<'a, UserMsg>>,
     pub is_open: Vec<bool>,
     pub open_submenus: Vec<usize>,
     pub pending_submenu: Option<Vec<usize>>,
@@ -39,7 +53,7 @@ pub struct Menu<'a> {
     pub close_timer: Option<Instant>,
 }
 
-impl <'a>Menu<'a> {
+impl<'a, UserMsg> Menu<'a, UserMsg> {
     pub fn default() -> Self {
         Self {
             configs: Vec::new(),
@@ -51,17 +65,17 @@ impl <'a>Menu<'a> {
             close_timer: None,
         }
     }
-    pub fn new(&mut self, menu_configs: Vec<MenuConfig<'a>>) -> Self {
+    pub fn new(&mut self, menu_configs: Vec<MenuConfig<'a, UserMsg>>) -> Self {
         let mut m = Menu::default();
         m.is_open = vec![false; menu_configs.len()];
         m.configs = menu_configs;
         m
-     }
+    }
 }
 
 
 #[derive(Debug, Clone)]
-pub enum MenuMessage {
+pub enum MenuMessage<UserMsg = ()> {
     Close(usize),
     OpenOnHover(usize),
     CloseSubmenu(Vec<usize>),
@@ -73,10 +87,11 @@ pub enum MenuMessage {
     OpenSubmenuTimer(Vec<usize>),
     CancelSubmenuTimer(Vec<usize>),
     ItemPressed(String),
+    Custom(UserMsg),
 }
 
-impl<'a> Menu<'a> {
-    pub fn update(&mut self, message: MenuMessage) -> Task<MenuMessage> {
+impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
+    pub fn update(&mut self, message: MenuMessage<UserMsg>) -> Task<MenuMessage<UserMsg>> {
         match message {
             MenuMessage::Close(idx) => {
                 self.is_open[idx] = !self.is_open[idx];
@@ -201,6 +216,10 @@ impl<'a> Menu<'a> {
                 // Let the application handle item presses
                 Task::none()
             },
+            MenuMessage::Custom(_) => {
+                // Let the application handle custom widget messages
+                Task::none()
+            },
         }
     }
 
@@ -213,7 +232,7 @@ impl<'a> Menu<'a> {
         self.close_timer = None;
     }
 
-    pub fn get_menu(&'a self) -> Element<'a, MenuMessage> {
+    pub fn get_menu(&'a self) -> Element<'a, MenuMessage<UserMsg>> {
 
         let mut menu_bar = vec![];
         
@@ -256,8 +275,8 @@ impl<'a> Menu<'a> {
 }
 
 // Specialized impl for 'static menu that doesn't require &'a self
-impl Menu<'static> {
-    pub fn get_menu_static(&self) -> Element<'static, MenuMessage> {
+impl<UserMsg: Clone + 'static> Menu<'static, UserMsg> {
+    pub fn get_menu_static(&self) -> Element<'static, MenuMessage<UserMsg>> {
         let mut menu_bar = vec![];
         
         for (idx, config) in self.configs.iter().enumerate() {
@@ -297,12 +316,12 @@ impl Menu<'static> {
 }
 
 /// Renders menu items with subpopovers for each submenu
-fn render_menu_with_subpopovers<'a>(
-    config: &'a MenuConfig,
+fn render_menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
+    config: &'a MenuConfig<'a, UserMsg>,
     open_submenus: Vec<usize>,
     current_path: Vec<usize>,
-) -> Element<'a, MenuMessage> {
-    let buttons: Vec<Element<'a, MenuMessage>> = config.items.iter().enumerate().map(|(idx, item)| {
+) -> Element<'a, MenuMessage<UserMsg>> {
+    let buttons: Vec<Element<'a, MenuMessage<UserMsg>>> = config.items.iter().enumerate().map(|(idx, item)| {
         match item {
             MenuItem::Item(label) => {
                 button(text(*label))
@@ -395,12 +414,12 @@ fn render_menu_with_subpopovers<'a>(
 }
 
 /// Specialized version for 'static MenuConfigs
-fn render_menu_with_subpopovers_static(
-    config: &MenuConfig<'static>,
+fn render_menu_with_subpopovers_static<UserMsg: Clone + 'static>(
+    config: &MenuConfig<'static, UserMsg>,
     open_submenus: Vec<usize>,
     current_path: Vec<usize>,
-) -> Element<'static, MenuMessage> {
-    let buttons: Vec<Element<'static, MenuMessage>> = config.items.iter().enumerate().map(|(idx, item)| {
+) -> Element<'static, MenuMessage<UserMsg>> {
+    let buttons: Vec<Element<'static, MenuMessage<UserMsg>>> = config.items.iter().enumerate().map(|(idx, item)| {
         match item {
             MenuItem::Item(label) => {
                 button(text(*label))

@@ -1,6 +1,6 @@
 
 use iced_menu::{Menu, MenuMessage, MenuConfig, MenuItem};
-use iced::widget::{container, space};
+use iced::widget::{button, container, space, text};
 use iced::{Element, Task, Theme, Widget};
 use std::rc::Rc;
 
@@ -10,15 +10,20 @@ pub fn main() -> iced::Result {
         .run()
 }
 
+// User-defined enum for messages that custom menu widgets can emit
+#[derive(Debug, Clone)]
+enum MenuAction {
+    ToggleDarkMode,
+}
+
 struct App {
-    menu: Menu<'static>,
+    menu: Menu<'static, MenuAction>,
     is_dark_mode: bool,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
-    Menu(MenuMessage),
-    ToggleDarkMode,
+    Menu(MenuMessage<MenuAction>),
 }
 
 impl App {
@@ -39,43 +44,33 @@ impl App {
     
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Menu(mm) => {
-                match mm {
-                    MenuMessage::ItemPressed(label) => {
-                        if label == "dark-mode-toggle" {
-                            return Task::perform(
-                                async {},
-                                |_| Message::ToggleDarkMode
-                            );
-                        }
-                        println!("Item pressed: {}", &label);
-                        self.menu.clear_timers();
+            Message::Menu(mm) => match mm {
+                MenuMessage::ItemPressed(label) => {
+                    println!("Item pressed: {}", &label);
+                    self.menu.clear_timers();
+                    Task::none()
+                }
+                MenuMessage::Custom(action) => match action {
+                    MenuAction::ToggleDarkMode => {
+                        self.is_dark_mode = !self.is_dark_mode;
+                        println!("Dark mode: {}", self.is_dark_mode);
                         Task::none()
                     }
-                    _ => self.menu.update(mm).map(Message::Menu)
                 }
-            },
-            Message::ToggleDarkMode => {
-                self.is_dark_mode = !self.is_dark_mode;
-                println!("Dark mode: {}", self.is_dark_mode);
-                Task::none()
+                _ => self.menu.update(mm).map(Message::Menu)
             }
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
-
         let menu = self.menu.get_menu_static().map(Message::Menu);
-        
         container(menu)
-        .padding(10.0)
-        .boxed()
-
+            .padding(10.0)
+            .boxed()
     }
-
 }
 
-fn define_menu_configs() -> Vec<MenuConfig<'static>> {
+fn define_menu_configs() -> Vec<MenuConfig<'static, MenuAction>> {
     vec![        
         MenuConfig {
             bar_label: "File",
@@ -131,7 +126,7 @@ fn define_menu_configs() -> Vec<MenuConfig<'static>> {
         },
         MenuConfig {
             bar_label: "Edit",
-            width: 150.0,
+            width: 200.0,
             gap: None,
             items: vec![
                 MenuItem::Item("Undo"),
@@ -154,14 +149,14 @@ fn define_menu_configs() -> Vec<MenuConfig<'static>> {
                 MenuItem::Item("Replace"),
                 MenuItem::Item("Find in Files"),
                 MenuItem::Item("Replace in Files"),
-                MenuItem::Custom(Rc::new(custom_button())),
+                MenuItem::Custom(Rc::new(dark_mode_toggle())),
             ],
             ..Default::default()
         }
     ]
 }
 
-fn separator() -> impl Fn() -> Element<'static, MenuMessage> {
+fn separator() -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
     || {
         space()
             .height(iced::Length::Fixed(1.0))
@@ -170,14 +165,13 @@ fn separator() -> impl Fn() -> Element<'static, MenuMessage> {
     }
 }
 
-fn custom_button() -> impl Fn() -> Element<'static, MenuMessage> {
+// A real interactive widget using MenuMessage::Custom to send MenuAction
+fn dark_mode_toggle() -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
     || {
-        iced::widget::button(
-            iced::widget::text("☑ Dark Mode")
-        )
-        .on_press(MenuMessage::ItemPressed("dark-mode-toggle".to_string()))
-        .width(iced::Length::Fill)
-        .style(|theme, status| iced::widget::button::text(theme, status))
-        .boxed()
+        button(text("☑ Dark Mode"))
+            .on_press(MenuMessage::Custom(MenuAction::ToggleDarkMode))
+            .width(iced::Length::Fill)
+            .style(|theme, status| button::text(theme, status))
+            .boxed()
     }
 }
