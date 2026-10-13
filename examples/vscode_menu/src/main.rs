@@ -154,7 +154,7 @@ fn define_menu_configs() -> Vec<MenuConfig<'static>> {
                 MenuItem::Item("Replace"),
                 MenuItem::Item("Find in Files"),
                 MenuItem::Item("Replace in Files"),
-                MenuItem::Custom(Rc::new(custom_checkbox_display())),
+                MenuItem::Custom(Rc::new(custom_button())),
             ],
             ..Default::default()
         }
@@ -170,12 +170,14 @@ fn separator() -> impl Fn() -> Element<'static, MenuMessage> {
     }
 }
 
-fn custom_checkbox_display() -> impl Fn() -> Element<'static, MenuMessage> {
+fn custom_button() -> impl Fn() -> Element<'static, MenuMessage> {
     || {
-        iced::widget::container(
+        iced::widget::button(
             iced::widget::text("☑ Dark Mode")
         )
-        .padding(5.0)
+        .on_press(MenuMessage::ItemPressed("dark-mode-toggle".to_string()))
+        .width(iced::Length::Fill)
+        .style(|theme, status| iced::widget::button::text(theme, status))
         .boxed()
     }
 }
