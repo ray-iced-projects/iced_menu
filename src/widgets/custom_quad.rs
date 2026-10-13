@@ -1,4 +1,4 @@
-
+#[allow(dead_code)]
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer;
 use iced::advanced::widget::{self, Widget};
@@ -18,6 +18,7 @@ pub struct CustomQuad {
 
 impl CustomQuad
 {
+    #[allow(dead_code)]
     pub fn new(
         width: f32,
         height: f32,

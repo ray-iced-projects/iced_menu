@@ -1,8 +1,16 @@
 [package]
 name = "iced_menu"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
+[lib]
+name = "iced_menu"
+path = "src/lib.rs"
+
+[[example]]
+name = "vscode_menu"
+path = "examples/vscode_menu/src/main.rs"
 
 [dependencies]
 iced = {git = "https://github.com/iced-rs/iced", rev = "edc5a2862011db643e3210940eb31420da8b994c", features=["debug", "advanced"]}
+
