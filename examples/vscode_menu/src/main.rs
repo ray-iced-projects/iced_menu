@@ -1,6 +1,6 @@
 
 use iced_menu::{Menu, MenuMessage, MenuConfig, MenuItem};
-use iced::widget::{button, container, space, text};
+use iced::widget::{container, space};
 use iced::{Element, Task, Theme, Widget};
 use std::rc::Rc;
 
@@ -13,7 +13,7 @@ pub fn main() -> iced::Result {
 // User-defined enum for messages that custom menu widgets can emit
 #[derive(Debug, Clone)]
 enum MenuAction {
-    ToggleDarkMode,
+    SetDarkMode(bool),
 }
 
 struct App {
@@ -28,14 +28,15 @@ enum Message {
 
 impl App {
     fn default() -> Self {
-        let configs = define_menu_configs();
+        let is_dark_mode = false;
+        let configs = define_menu_configs(is_dark_mode);
         let len = configs.len();
         let mut menu = Menu::default();
         menu.configs = configs;
         menu.is_open = vec![false; len];
         Self {
             menu,
-            is_dark_mode: false,
+            is_dark_mode,
         }
     }
 }
@@ -51,8 +52,10 @@ impl App {
                     Task::none()
                 }
                 MenuMessage::Custom(action) => match action {
-                    MenuAction::ToggleDarkMode => {
-                        self.is_dark_mode = !self.is_dark_mode;
+                    MenuAction::SetDarkMode(checked) => {
+                        self.is_dark_mode = checked;
+                        // Rebuild configs so the checkbox reflects the new state
+                        self.menu.configs = define_menu_configs(self.is_dark_mode);
                         println!("Dark mode: {}", self.is_dark_mode);
                         Task::none()
                     }
@@ -70,7 +73,7 @@ impl App {
     }
 }
 
-fn define_menu_configs() -> Vec<MenuConfig<'static, MenuAction>> {
+fn define_menu_configs(is_dark_mode: bool) -> Vec<MenuConfig<'static, MenuAction>> {
     vec![        
         MenuConfig {
             bar_label: "File",
@@ -149,7 +152,7 @@ fn define_menu_configs() -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::Item("Replace"),
                 MenuItem::Item("Find in Files"),
                 MenuItem::Item("Replace in Files"),
-                MenuItem::Custom(Rc::new(dark_mode_toggle())),
+                MenuItem::Custom(Rc::new(dark_mode_toggle(is_dark_mode))),
             ],
             ..Default::default()
         }
@@ -165,13 +168,13 @@ fn separator() -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
     }
 }
 
-// A real interactive widget using MenuMessage::Custom to send MenuAction
-fn dark_mode_toggle() -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
-    || {
-        button(text("☑ Dark Mode"))
-            .on_press(MenuMessage::Custom(MenuAction::ToggleDarkMode))
-            .width(iced::Length::Fill)
-            .style(|theme, status| button::text(theme, status))
+// Real checkbox widget — captures `checked` at config-build time;
+// configs are rebuilt in update() after each toggle so state stays current
+fn dark_mode_toggle(checked: bool) -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
+    move || {
+        iced::widget::checkbox(checked)
+            .label("Dark Mode")
+            .on_toggle(|b| MenuMessage::Custom(MenuAction::SetDarkMode(b)))
             .boxed()
     }
 }
