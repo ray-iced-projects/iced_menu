@@ -16,9 +16,15 @@ enum MenuAction {
     SetDarkMode(bool),
 }
 
+// Holds all state that custom menu widgets need to reflect
+#[derive(Debug, Clone, Default)]
+struct State {
+    is_dark_mode: bool,
+}
+
 struct App {
     menu: Menu<'static, MenuAction>,
-    is_dark_mode: bool,
+    state: State,
 }
 
 #[derive(Debug, Clone)]
@@ -28,15 +34,15 @@ enum Message {
 
 impl App {
     fn default() -> Self {
-        let is_dark_mode = false;
-        let configs = define_menu_configs(is_dark_mode);
+        let state = State::default();
+        let configs = define_menu_configs(&state);
         let len = configs.len();
         let mut menu = Menu::default();
         menu.configs = configs;
         menu.is_open = vec![false; len];
         Self {
             menu,
-            is_dark_mode,
+            state,
         }
     }
 }
@@ -53,10 +59,10 @@ impl App {
                 }
                 MenuMessage::Custom(action) => match action {
                     MenuAction::SetDarkMode(checked) => {
-                        self.is_dark_mode = checked;
-                        // Rebuild configs so the checkbox reflects the new state
-                        self.menu.configs = define_menu_configs(self.is_dark_mode);
-                        println!("Dark mode: {}", self.is_dark_mode);
+                        self.state.is_dark_mode = checked;
+                        // Rebuild configs so widgets reflect the new state
+                        self.menu.configs = define_menu_configs(&self.state);
+                        println!("Dark mode: {}", self.state.is_dark_mode);
                         Task::none()
                     }
                 }
@@ -73,7 +79,7 @@ impl App {
     }
 }
 
-fn define_menu_configs(is_dark_mode: bool) -> Vec<MenuConfig<'static, MenuAction>> {
+fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
     vec![        
         MenuConfig {
             bar_label: "File",
@@ -152,7 +158,7 @@ fn define_menu_configs(is_dark_mode: bool) -> Vec<MenuConfig<'static, MenuAction
                 MenuItem::Item("Replace"),
                 MenuItem::Item("Find in Files"),
                 MenuItem::Item("Replace in Files"),
-                MenuItem::Custom(Rc::new(dark_mode_toggle(is_dark_mode))),
+                MenuItem::Custom(Rc::new(dark_mode_toggle(state.is_dark_mode))),
             ],
             ..Default::default()
         }
