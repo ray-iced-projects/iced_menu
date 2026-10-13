@@ -12,11 +12,13 @@ pub fn main() -> iced::Result {
 
 struct App {
     menu: Menu<'static>,
+    is_dark_mode: bool,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
     Menu(MenuMessage),
+    ToggleDarkMode,
 }
 
 impl App {
@@ -28,6 +30,7 @@ impl App {
         menu.is_open = vec![false; len];
         Self {
             menu,
+            is_dark_mode: false,
         }
     }
 }
@@ -39,12 +42,23 @@ impl App {
             Message::Menu(mm) => {
                 match mm {
                     MenuMessage::ItemPressed(label) => {
+                        if label == "dark-mode-toggle" {
+                            return Task::perform(
+                                async {},
+                                |_| Message::ToggleDarkMode
+                            );
+                        }
                         println!("Item pressed: {}", &label);
                         self.menu.clear_timers();
                         Task::none()
                     }
                     _ => self.menu.update(mm).map(Message::Menu)
                 }
+            },
+            Message::ToggleDarkMode => {
+                self.is_dark_mode = !self.is_dark_mode;
+                println!("Dark mode: {}", self.is_dark_mode);
+                Task::none()
             }
         }
     }
@@ -140,7 +154,7 @@ fn define_menu_configs() -> Vec<MenuConfig<'static>> {
                 MenuItem::Item("Replace"),
                 MenuItem::Item("Find in Files"),
                 MenuItem::Item("Replace in Files"),
-                MenuItem::Custom(Rc::new(custom_checkbox())),
+                MenuItem::Custom(Rc::new(custom_checkbox_display())),
             ],
             ..Default::default()
         }
@@ -156,9 +170,12 @@ fn separator() -> impl Fn() -> Element<'static, MenuMessage> {
     }
 }
 
-fn custom_checkbox() -> impl Fn() -> Element<'static, MenuMessage> {
+fn custom_checkbox_display() -> impl Fn() -> Element<'static, MenuMessage> {
     || {
-        container(iced::widget::text("☑ Dark Mode"))
-            .boxed()
+        iced::widget::container(
+            iced::widget::text("☑ Dark Mode")
+        )
+        .padding(5.0)
+        .boxed()
     }
 }
