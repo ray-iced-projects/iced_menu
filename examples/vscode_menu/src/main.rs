@@ -1,7 +1,9 @@
 
+use iced::Length::Fill;
+use iced::alignment::Vertical;
 use iced_menu::{Menu, MenuMessage, MenuConfig, MenuItem};
-use iced::widget::container;
-use iced::{Element, Task, Theme, Widget};
+use iced::widget::{self, container};
+use iced::{Alignment, Element, Task, Theme, Widget};
 use std::rc::Rc;
 
 pub fn main() -> iced::Result {
@@ -13,13 +15,16 @@ pub fn main() -> iced::Result {
 // User-defined enum for messages that custom menu widgets can emit
 #[derive(Debug, Clone)]
 enum MenuAction {
+    DoAction,
     SetDarkMode(bool),
+    SetAutoSave(bool),
 }
 
 // Holds all state that custom menu widgets need to reflect
 #[derive(Debug, Clone, Default)]
 struct State {
     is_dark_mode: bool,
+    is_checked: bool,
 }
 
 struct App {
@@ -58,6 +63,10 @@ impl App {
                     Task::none()
                 }
                 MenuMessage::Custom(action) => match action {
+                    MenuAction::DoAction => {
+                        println!("Doing some action");
+                        Task::none()
+                    }
                     MenuAction::SetDarkMode(checked) => {
                         self.state.is_dark_mode = checked;
                         // Rebuild configs so widgets reflect the new state
@@ -65,6 +74,12 @@ impl App {
                         println!("Dark mode: {}", self.state.is_dark_mode);
                         Task::none()
                     }
+                    MenuAction::SetAutoSave(is_checked) => {
+                        println!("SetAutoSave: {}", is_checked);
+                        self.state.is_checked = is_checked;
+                        self.menu.configs = define_menu_configs(&self.state);
+                        Task::none()
+                    },
                 }
                 _ => self.menu.update(mm).map(Message::Menu)
             }
@@ -82,15 +97,18 @@ impl App {
 fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
     vec![        
         MenuConfig {
-            bar_label: "File",
+            label: "File",
+            label_size: 14.0,
             width: 250.0,
             items: vec![
-                MenuItem::Item("New File"),
+                MenuItem::Element(Rc::new(menu_row(None, "New Text File".to_string(), Some("Ctrl+N".to_string()), None))),
+                MenuItem::Element(Rc::new(menu_row(None, "New File".to_string(), Some("Ctrl+Alt+Super+N".to_string()), None))),
                 MenuItem::Item("New Window"),
                 MenuItem::SubMenu {
                     label: "New Window with Profile >",
                     config: MenuConfig {
                         width: 200.0,
+                        label_size: 14.0,
                         items: vec![
                             MenuItem::Item("Profile 1"),
                             MenuItem::Item("Profile 2"),
@@ -98,6 +116,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                                 label: "Additional Profiles >",
                                 config: MenuConfig {
                                     width: 100.0,
+                                    label_size: 14.0,
                                     items: vec![
                                         MenuItem::Item("Profile 3"),
                                         MenuItem::Item("Profile 4"),
@@ -110,7 +129,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                         ..Default::default()
                     },
                 },
-                MenuItem::Custom(Rc::new(separator())),
+                MenuItem::Element(Rc::new(separator())),
                 MenuItem::Item("Open File"),
                 MenuItem::Item("Open Folder"),
                 MenuItem::Item("Open Wokspace from File"),
@@ -124,17 +143,27 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                         ..Default::default()
                     },
                 },
-                MenuItem::Custom(Rc::new(separator())),
+                MenuItem::Element(Rc::new(separator())),
                 MenuItem::Item("Save"),
                 MenuItem::Item("Save As..."),
                 MenuItem::Item("Save All"),
+                MenuItem::Element(Rc::new(separator())),
+                MenuItem::Item("Share >"),
+                MenuItem::Element(Rc::new(separator())),
+                MenuItem::Element(Rc::new(menu_row(Some(state.is_checked), "Auto Save".to_string(), None, None))),
+                MenuItem::Item("Preferences >"),
+                MenuItem::Element(Rc::new(separator())),
                 MenuItem::Item("Revert File"),
+                MenuItem::Item("Close Editor"),
+                MenuItem::Item("Close Folder"),
+                MenuItem::Item("Close Window"),
+                MenuItem::Element(Rc::new(separator())),
                 MenuItem::Item("Exit"),
             ],
             ..Default::default()
         },
         MenuConfig {
-            bar_label: "Edit",
+            label: "Edit",
             width: 200.0,
             gap: None,
             items: vec![
@@ -158,7 +187,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::Item("Replace"),
                 MenuItem::Item("Find in Files"),
                 MenuItem::Item("Replace in Files"),
-                MenuItem::Custom(Rc::new(dark_mode_toggle(state.is_dark_mode))),
+                MenuItem::Element(Rc::new(dark_mode_toggle(state.is_dark_mode))),
             ],
             ..Default::default()
         }
@@ -179,4 +208,76 @@ fn dark_mode_toggle(checked: bool) -> impl Fn() -> Element<'static, MenuMessage<
             .on_toggle(|b| MenuMessage::Custom(MenuAction::SetDarkMode(b)))
             .boxed()
     }
+}
+
+fn menu_row(
+    checked: Option<bool>, 
+    label: String, 
+    keys: Option<String>, 
+    arrow: Option<String>,
+) -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
+    let size = 14.0;
+    move || {
+        let chk = if checked.is_some() {
+            widget::checkbox(checked.unwrap())
+            .on_toggle(|b| MenuMessage::Custom(MenuAction::SetAutoSave(b)))
+            .width(20.0)
+            .boxed()
+        } else {
+            widget::space().width(20.0).boxed()
+        };
+
+        let lbl = 
+            widget::text(label.clone())
+            .size(size)
+            .width(Fill)
+            .boxed();
+
+        let ctrl = 
+            if keys.is_some() {
+            widget::text(keys.clone().unwrap())
+            .size(size)
+            .align_x(Alignment::End)
+            .width(Fill)
+            .boxed()
+        } else {
+            widget::space().boxed()
+        };
+
+    let arr = 
+        if arrow.is_some() {
+            widget::text(">")
+            .size(size)
+            .align_x(Alignment::End)
+            .width(25.0)
+            .boxed()
+        } else {
+            widget::space().width(25.0).boxed()
+        };
+
+    let rw_btn = 
+        widget::row(vec![lbl, ctrl, arr])
+        .align_y(Vertical::Center)
+        .width(Fill)
+        .boxed();
+
+    let btn = 
+        widget::button(rw_btn)
+            .on_press(MenuMessage::Custom(MenuAction::DoAction))
+            .padding(0.0)
+            .style(move|theme, status| 
+                widget::button::text(theme, status))
+            .width(Fill)
+            .boxed();
+
+    let rw = 
+        widget::row(vec![chk, btn])
+        .spacing(10.0)
+        .align_y(Vertical::Center)
+        .width(Fill)
+        .boxed();
+
+    rw
+    }
+
 }

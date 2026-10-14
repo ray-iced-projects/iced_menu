@@ -2,7 +2,7 @@
 name = "vscode_menu_example"
 version = "0.1.0"
 authors = ["Charles Ray <ray-iced-projects@gmail.com>"]
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 iced_menu = { path = "../.." }

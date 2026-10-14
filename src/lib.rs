@@ -10,7 +10,8 @@ use crate::widgets::popover::{Popover, Position};
 
 #[derive(Clone)]
 pub struct MenuConfig<'a, UserMsg = ()> {
-    pub bar_label: &'a str,
+    pub label: &'a str,
+    pub label_size: f32,
     pub items: Vec<MenuItem<'a, UserMsg>>,
     pub width: f32,
     pub gap: Option<f32>,
@@ -22,7 +23,8 @@ pub struct MenuConfig<'a, UserMsg = ()> {
 impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
     fn default() -> Self {
         MenuConfig {
-            bar_label: "",
+            label: "",
+            label_size: 14.0,
             items: Vec::new(),
             width: 200.0,
             gap: None,
@@ -39,7 +41,7 @@ pub enum MenuItem<'a, UserMsg = ()> {
         label: &'a str,
         config: MenuConfig<'a, UserMsg>,
     },
-    Custom(Rc<dyn Fn() -> Element<'a, MenuMessage<UserMsg>> + 'a>),
+    Element(Rc<dyn Fn() -> Element<'a, MenuMessage<UserMsg>> + 'a>),
 }
 
 
@@ -249,7 +251,7 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                 
             } else { None };
             
-            let btn = button(text(config.bar_label))
+            let btn = button(text(config.label))
                     .on_press(MenuMessage::Close(idx))
                     .style(move|theme, status|
                             button::text(theme, status)
@@ -291,8 +293,9 @@ impl<UserMsg: Clone + 'static> Menu<'static, UserMsg> {
                     )
                 
             } else { None };
-            
-            let btn = button(text(config.bar_label))
+            let label = 
+                text(config.label).size(config.label_size).boxed();
+            let btn = button(label)
                     .on_press(MenuMessage::Close(idx))
                     .style(move|theme, status|
                             button::text(theme, status)
@@ -331,7 +334,7 @@ fn render_menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                         button::text(theme, status))
                     .boxed()
             }
-            MenuItem::Custom(f) => f(),
+            MenuItem::Element(f) => f(),
             MenuItem::SubMenu { label, config: sub_config } => {
                 let mut submenu_path = current_path.clone();
                 submenu_path.push(idx);
@@ -429,7 +432,7 @@ fn render_menu_with_subpopovers_static<UserMsg: Clone + 'static>(
                         button::text(theme, status))
                     .boxed()
             }
-            MenuItem::Custom(f) => f(),
+            MenuItem::Element(f) => f(),
             MenuItem::SubMenu { label, config: sub_config } => {
                 let mut submenu_path = current_path.clone();
                 submenu_path.push(idx);
