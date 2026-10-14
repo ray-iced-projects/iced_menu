@@ -40,6 +40,12 @@ pub enum MenuItem<'a, UserMsg = ()> {
     SubMenu {
         config: MenuConfig<'a, UserMsg>,
     },
+    /// Like SubMenu but the trigger button's interior is provided by a closure.
+    /// The closure must return content (a row, text, etc.) — not a button.
+    SubElement {
+        content: Rc<dyn Fn() -> Element<'a, MenuMessage<UserMsg>> + 'a>,
+        config: MenuConfig<'a, UserMsg>,
+    },
     Element(Rc<dyn Fn() -> Element<'a, MenuMessage<UserMsg>> + 'a>),
 }
 
@@ -414,6 +420,66 @@ fn render_menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                 .on_close(MenuMessage::CloseSubmenu(close_path))
                 .boxed()
             }
+            MenuItem::SubElement { content, config: sub_config } => {
+                let mut submenu_path = current_path.clone();
+                submenu_path.push(idx);
+
+                let is_open = open_submenus == submenu_path ||
+                    (open_submenus.len() > submenu_path.len() &&
+                    open_submenus[0..submenu_path.len()] == submenu_path[..]);
+
+                let submenu_content = if is_open {
+                    let inner = render_menu_with_subpopovers(
+                        sub_config,
+                        open_submenus.clone(),
+                        submenu_path.clone(),
+                    );
+                    let leave_path = submenu_path.clone();
+                    let enter_path = submenu_path.clone();
+                    let with_mouse_area = mouse_area(inner)
+                        .on_exit(MenuMessage::StartCloseSubmenuTimer(leave_path))
+                        .on_enter(MenuMessage::CancelCloseSubmenuTimer(enter_path))
+                        .boxed();
+                    Some(container(with_mouse_area)
+                        .width(iced::Length::Fixed(sub_config.width))
+                        .style(|theme: &Theme| container::bordered_box(theme))
+                        .padding(5.0)
+                        .boxed())
+                } else {
+                    None
+                };
+
+                let toggle_path = submenu_path.clone();
+                let hover_path = submenu_path.clone();
+                let exit_path_cancel = submenu_path.clone();
+                let exit_path_close = submenu_path.clone();
+                let close_path = submenu_path;
+
+                let btn = button(content())
+                    .width(iced::Length::Fill)
+                    .on_press(MenuMessage::ToggleSubmenu(toggle_path))
+                    .style(|theme, status| button::text(theme, status))
+                    .boxed();
+
+                let btn_with_mouse = if is_open {
+                    mouse_area(btn)
+                        .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
+                        .on_exit(MenuMessage::StartCloseSubmenuTimer(exit_path_close))
+                        .boxed()
+                } else {
+                    mouse_area(btn)
+                        .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
+                        .on_exit(MenuMessage::CancelSubmenuTimer(exit_path_cancel))
+                        .boxed()
+                };
+
+                Popover::new(btn_with_mouse, submenu_content)
+                    .position(sub_config.position.unwrap_or(Position::Right))
+                    .align(sub_config.align.unwrap_or(Alignment::Start))
+                    .gap(sub_config.gap.unwrap_or_default())
+                    .on_close(MenuMessage::CloseSubmenu(close_path))
+                    .boxed()
+            }
         }
     }).collect();
 
@@ -514,6 +580,66 @@ fn render_menu_with_subpopovers_static<UserMsg: Clone + 'static>(
                 .gap(sub_config.gap.unwrap_or_default())
                 .on_close(MenuMessage::CloseSubmenu(close_path))
                 .boxed()
+            }
+            MenuItem::SubElement { content, config: sub_config } => {
+                let mut submenu_path = current_path.clone();
+                submenu_path.push(idx);
+
+                let is_open = open_submenus == submenu_path ||
+                    (open_submenus.len() > submenu_path.len() &&
+                    open_submenus[0..submenu_path.len()] == submenu_path[..]);
+
+                let submenu_content = if is_open {
+                    let inner = render_menu_with_subpopovers_static(
+                        sub_config,
+                        open_submenus.clone(),
+                        submenu_path.clone(),
+                    );
+                    let leave_path = submenu_path.clone();
+                    let enter_path = submenu_path.clone();
+                    let with_mouse_area = mouse_area(inner)
+                        .on_exit(MenuMessage::StartCloseSubmenuTimer(leave_path))
+                        .on_enter(MenuMessage::CancelCloseSubmenuTimer(enter_path))
+                        .boxed();
+                    Some(container(with_mouse_area)
+                        .width(iced::Length::Fixed(sub_config.width))
+                        .style(|theme: &Theme| container::bordered_box(theme))
+                        .padding(5.0)
+                        .boxed())
+                } else {
+                    None
+                };
+
+                let toggle_path = submenu_path.clone();
+                let hover_path = submenu_path.clone();
+                let exit_path_cancel = submenu_path.clone();
+                let exit_path_close = submenu_path.clone();
+                let close_path = submenu_path;
+
+                let btn = button(content())
+                    .width(iced::Length::Fill)
+                    .on_press(MenuMessage::ToggleSubmenu(toggle_path))
+                    .style(|theme, status| button::text(theme, status))
+                    .boxed();
+
+                let btn_with_mouse = if is_open {
+                    mouse_area(btn)
+                        .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
+                        .on_exit(MenuMessage::StartCloseSubmenuTimer(exit_path_close))
+                        .boxed()
+                } else {
+                    mouse_area(btn)
+                        .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
+                        .on_exit(MenuMessage::CancelSubmenuTimer(exit_path_cancel))
+                        .boxed()
+                };
+
+                Popover::new(btn_with_mouse, submenu_content)
+                    .position(sub_config.position.unwrap_or(Position::Right))
+                    .align(sub_config.align.unwrap_or(Alignment::Start))
+                    .gap(sub_config.gap.unwrap_or_default())
+                    .on_close(MenuMessage::CloseSubmenu(close_path))
+                    .boxed()
             }
         }
     }).collect();

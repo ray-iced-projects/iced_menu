@@ -99,22 +99,21 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
         MenuConfig {
             label: "File",
             label_size: 14.0,
-            width: 250.0,
+            width: 300.0,
             items: vec![
                 MenuItem::Element(
                     Rc::new(
                         menu_row(None, "New Text File".to_string(), Some("Ctrl+N".to_string()), None))),
                 MenuItem::Element(
                     Rc::new(menu_row(
-                        None, "New File".to_string(), Some("Ctrl+Alt+Super+N".to_string()), None))),
+                        None, "New File...".to_string(), Some("Ctrl+Alt+Super+N".to_string()), None))),
                 MenuItem::Element(
                     Rc::new(menu_row(
                         None, "New Window".to_string(), Some("Ctrl+Shift+N".to_string()), None ))),
-                MenuItem::SubMenu {
+                MenuItem::SubElement {
+                    content: Rc::new(sub_menu_row("New Window with Profile")),
                     config: MenuConfig {
-                        label: "New Window with Profile >",
                         width: 200.0,
-                        label_size: 14.0,
                         items: vec![
                             MenuItem::Item { label: "Profile 1", size: 14.0 },
                             MenuItem::Item { label: "Profile 2", size: 14.0 },
@@ -136,12 +135,19 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     },
                 },
                 MenuItem::Element(Rc::new(separator())),
-                MenuItem::Item { label: "Open File", size: 14.0 },
-                MenuItem::Item { label: "Open Folder", size: 14.0 },
-                MenuItem::Item { label: "Open Wokspace from File", size: 14.0 },
-                MenuItem::SubMenu {
+                MenuItem::Element(
+                    Rc::new(menu_row(
+                        None, "Open File...".to_string(), Some("Ctrl+O".to_string()), None ))),
+                MenuItem::Element(
+                    Rc::new(menu_row(
+                        None, "Open Folder...".to_string(), Some("Ctrl+K Crtl+O".to_string()), None ))),
+                MenuItem::Element(
+                    Rc::new(menu_row(
+                        None, "Open Workspace from File...".to_string(), None, None ))),
+                // The sub elemnt contains both the top level item and then the children
+                MenuItem::SubElement {
+                    content: Rc::new(sub_menu_row("Open Recent")),
                     config: MenuConfig {
-                        label: "Open Recent >",
                         width: 240.0,
                         items: vec![
                             MenuItem::Item { label: "~/document/iced_menu", size: 14.0 },
@@ -150,21 +156,61 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     },
                 },
                 MenuItem::Element(Rc::new(separator())),
-                MenuItem::Item { label: "Save", size: 14.0 },
-                MenuItem::Item { label: "Save As...", size: 14.0 },
-                MenuItem::Item { label: "Save All", size: 14.0 },
+                MenuItem::Element(
+                    Rc::new(menu_row(
+                        None, "Save".to_string(), Some("Ctrl+S".to_string()), None ))),
+                MenuItem::Element(
+                    Rc::new(menu_row(
+                        None, "Save as...".to_string(), Some("Ctrl+Shift+S".to_string()), None ))),
+                MenuItem::Element(
+                    Rc::new(menu_row(
+                        None, "Save All".to_string(), None, None ))),
                 MenuItem::Element(Rc::new(separator())),
-                MenuItem::Item { label: "Share >", size: 14.0 },
+                // The sub elemnt contains both the top level item and then the children
+                MenuItem::SubElement {
+                    content: Rc::new(sub_menu_row("Share")),
+                    config: MenuConfig {
+                        width: 240.0,
+                        items: vec![
+                            MenuItem::Item { label: "Copy vscode.dec Link", size: 14.0 },
+                            MenuItem::Element(Rc::new(separator())),
+                            MenuItem::Item { label: "Export Profile (default)", size: 14.0 },
+                        ],
+                        ..Default::default()
+                    },
+                },
                 MenuItem::Element(Rc::new(separator())),
                 MenuItem::Element(Rc::new(menu_row(Some(state.is_checked), "Auto Save".to_string(), None, None))),
-                MenuItem::Item { label: "Preferences >", size: 14.0 },
+                // The sub elemnt contains both the top level item and then the children
+                MenuItem::SubElement {
+                    content: Rc::new(sub_menu_row("Preferences")),
+                    config: MenuConfig {
+                        width: 350.0,
+                        items: vec![
+                            MenuItem::Element(Rc::new(
+                                menu_row(None, "Profiles".to_string(), None, None ))),
+                            MenuItem::Element(Rc::new(
+                                menu_row(None, "Settings".to_string(), Some("Ctrl+,".to_string()), None ))),
+                            MenuItem::Element(Rc::new(
+                                menu_row(None, "Extensions".to_string(), Some("Ctrl+Shift+X,".to_string()), None ))),
+                            MenuItem::Element(Rc::new(
+                                menu_row(None, "Keyboard Shorcuts".to_string(), Some("Ctrl+K Ctrl+S,".to_string()), None ))),
+                        ],
+                        ..Default::default()
+                    },
+                },
                 MenuItem::Element(Rc::new(separator())),
-                MenuItem::Item { label: "Revert File", size: 14.0 },
-                MenuItem::Item { label: "Close Editor", size: 14.0 },
-                MenuItem::Item { label: "Close Folder", size: 14.0 },
-                MenuItem::Item { label: "Close Window", size: 14.0 },
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Revert File".to_string(), None, None ))),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Close Editor".to_string(), Some("Ctrl+W".to_string()), None ))),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Close Folder".to_string(), Some("Ctrl+k F".to_string()), None ))),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Close Window".to_string(), Some("Ctrl+F4".to_string()), None ))),
                 MenuItem::Element(Rc::new(separator())),
-                MenuItem::Item { label: "Exit", size: 14.0 },
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Exit".to_string(), Some("Ctrl+Q".to_string()), None ))),
             ],
             ..Default::default()
         },
@@ -178,9 +224,9 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::Item { label: "Cut", size: 14.0 },
                 MenuItem::Item { label: "Copy", size: 14.0 },
                 MenuItem::Item { label: "Paste", size: 14.0 },
-                MenuItem::SubMenu {
+                MenuItem::SubElement {
+                    content: Rc::new(sub_menu_row("Find >")),
                     config: MenuConfig {
-                        label: "Find >",
                         width: 150.0,
                         items: vec![
                             MenuItem::Item { label: "Find", size: 14.0 },
@@ -286,4 +332,19 @@ fn menu_row(
     rw
     }
 
+}
+
+/// Returns button-interior content for use with MenuItem::SubElement.
+/// Matches the visual layout of menu_row: spacer | label (fill) | ">" arrow.
+fn sub_menu_row(label: &'static str) -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
+    move || {
+        let size = 14.0;
+        let spc = widget::space().width(20.0).boxed();
+        let lbl = widget::text(label).size(size).width(Fill).boxed();
+        let arr = widget::text(">").size(size).align_x(Alignment::End).width(25.0).boxed();
+        widget::row(vec![spc, lbl, arr])
+            .align_y(Vertical::Center)
+            .width(Fill)
+            .boxed()
+    }
 }
