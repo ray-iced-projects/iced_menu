@@ -3,7 +3,7 @@ use iced::Length::Fill;
 use iced::alignment::Vertical;
 use iced_menu::{Menu, MenuMessage, MenuConfig, MenuItem};
 use iced::widget::{self, container};
-use iced::{Alignment, Element, Task, Theme, Widget};
+use iced::{Alignment, Element, Task, Theme, Widget, window};
 use std::rc::Rc;
 
 pub fn main() -> iced::Result {
@@ -15,15 +15,13 @@ pub fn main() -> iced::Result {
 // User-defined enum for messages that custom menu widgets can emit
 #[derive(Debug, Clone)]
 enum MenuAction {
-    DoAction,
-    SetDarkMode(bool),
+    DoAction(String),
     SetAutoSave(bool),
 }
 
 // Holds all state that custom menu widgets need to reflect
 #[derive(Debug, Clone, Default)]
 struct State {
-    is_dark_mode: bool,
     is_checked: bool,
 }
 
@@ -63,16 +61,13 @@ impl App {
                     Task::none()
                 }
                 MenuMessage::Custom(action) => match action {
-                    MenuAction::DoAction => {
-                        println!("Doing some action");
-                        Task::none()
-                    }
-                    MenuAction::SetDarkMode(checked) => {
-                        self.state.is_dark_mode = checked;
-                        // Rebuild configs so widgets reflect the new state
-                        self.menu.configs = define_menu_configs(&self.state);
-                        println!("Dark mode: {}", self.state.is_dark_mode);
-                        Task::none()
+                    MenuAction::DoAction(label) => {
+                        println!("Action Item pressed: {}", label);
+                        if label == "Exit" {
+                            window::latest().and_then(window::close)
+                        } else {
+                            Task::none()
+                        }
                     }
                     MenuAction::SetAutoSave(is_checked) => {
                         println!("SetAutoSave: {}", is_checked);
@@ -95,10 +90,12 @@ impl App {
 }
 
 fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
+    let size = 13.0;
+    let label_size = 13.0;
     vec![        
         MenuConfig {
             label: "File",
-            label_size: 14.0,
+            label_size,
             width: 300.0,
             items: vec![
                 MenuItem::Element(
@@ -115,17 +112,17 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     config: MenuConfig {
                         width: 200.0,
                         items: vec![
-                            MenuItem::Item { label: "Profile 1", size: 14.0 },
-                            MenuItem::Item { label: "Profile 2", size: 14.0 },
+                            MenuItem::Item { label: "Profile 1", size },
+                            MenuItem::Item { label: "Profile 2", size },
                             MenuItem::SubMenu {
                                 config: MenuConfig {
                                     label: "Additional Profiles >",
                                     width: 100.0,
-                                    label_size: 14.0,
+                                    label_size,
                                     items: vec![
-                                        MenuItem::Item { label: "Profile 3", size: 14.0 },
-                                        MenuItem::Item { label: "Profile 4", size: 14.0 },
-                                        MenuItem::Item { label: "Profile 5", size: 14.0 },
+                                        MenuItem::Item { label: "Profile 3", size },
+                                        MenuItem::Item { label: "Profile 4", size },
+                                        MenuItem::Item { label: "Profile 5", size },
                                     ],
                                     ..Default::default()
                                 },
@@ -150,7 +147,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     config: MenuConfig {
                         width: 240.0,
                         items: vec![
-                            MenuItem::Item { label: "~/document/iced_menu", size: 14.0 },
+                            MenuItem::Item { label: "~/document/iced_menu", size },
                         ],
                         ..Default::default()
                     },
@@ -172,9 +169,9 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     config: MenuConfig {
                         width: 240.0,
                         items: vec![
-                            MenuItem::Item { label: "Copy vscode.dec Link", size: 14.0 },
+                            MenuItem::Item { label: "Copy vscode.dec Link", size },
                             MenuItem::Element(Rc::new(separator())),
-                            MenuItem::Item { label: "Export Profile (default)", size: 14.0 },
+                            MenuItem::Item { label: "Export Profile (default)", size },
                         ],
                         ..Default::default()
                     },
@@ -216,33 +213,85 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
         },
         MenuConfig {
             label: "Edit",
-            width: 200.0,
+            width: 350.0,
             gap: None,
             items: vec![
-                MenuItem::Item { label: "Undo", size: 14.0 },
-                MenuItem::Item { label: "Redo", size: 14.0 },
-                MenuItem::Item { label: "Cut", size: 14.0 },
-                MenuItem::Item { label: "Copy", size: 14.0 },
-                MenuItem::Item { label: "Paste", size: 14.0 },
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Undo".to_string(), Some("Ctrl+Z".to_string()), None ))),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Redo".to_string(), Some("Ctrl+Y".to_string()), None ))),
+                MenuItem::Element(Rc::new(separator())),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Cut".to_string(), Some("Ctrl+X".to_string()), None ))),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Copy".to_string(), Some("Ctrl+C".to_string()), None ))),
                 MenuItem::SubElement {
-                    content: Rc::new(sub_menu_row("Find >")),
+                    content: Rc::new(sub_menu_row("Copy as")),
                     config: MenuConfig {
-                        width: 150.0,
+                        width: 350.0,
                         items: vec![
-                            MenuItem::Item { label: "Find", size: 14.0 },
-                            MenuItem::Item { label: "Find Next", size: 14.0 },
-                            MenuItem::Item { label: "Find Previous", size: 14.0 },
+                            MenuItem::Item { label: "Copy Remote File URL", size },
+                            MenuItem::Item { label: "Copy Remote File URL from...", size },
                         ],
                         ..Default::default()
                     },
                 },
-                MenuItem::Item { label: "Replace", size: 14.0 },
-                MenuItem::Item { label: "Find in Files", size: 14.0 },
-                MenuItem::Item { label: "Replace in Files", size: 14.0 },
-                MenuItem::Element(Rc::new(dark_mode_toggle(state.is_dark_mode))),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Paste".to_string(), Some("Ctrl+V".to_string()), None ))),
+                MenuItem::Element(Rc::new(separator())),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Find".to_string(), Some("Ctrl+F".to_string()), None ))),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Replace".to_string(), Some("Ctrl+H".to_string()), None ))),
+                MenuItem::Element(Rc::new(separator())),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Find in Files".to_string(), Some("Ctrl+Shift+F".to_string()), None ))),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Replace in Files".to_string(), Some("Ctrl+Shift+H".to_string()), None ))),
+                MenuItem::Element(Rc::new(separator())),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Toggle Line Comment".to_string(), Some("Ctrl+/".to_string()), None ))),
+                MenuItem::Element(Rc::new(
+                    menu_row(None, "Toggle Block Comment".to_string(), Some("Ctrl+Shift+A".to_string()), None ))),
             ],
             ..Default::default()
-        }
+        },
+        MenuConfig {
+            label: "Selection",
+            label_size,
+            width: 0.0,
+            ..Default::default()
+        },
+        MenuConfig {
+            label: "View",
+            label_size,
+            width: 0.0,
+            ..Default::default()
+        },
+        MenuConfig {
+            label: "Go",
+            label_size,
+            width: 0.0,
+            ..Default::default()
+        },
+        MenuConfig {
+            label: "Run",
+            label_size,
+            width: 0.0,
+            ..Default::default()
+        },
+        MenuConfig {
+            label: "Terminal",
+            label_size,
+            width: 0.0,
+            ..Default::default()
+        },
+        MenuConfig {
+            label: "Help",
+            label_size,
+            width: 0.0,
+            ..Default::default()
+        },
     ]
 }
 
@@ -252,23 +301,13 @@ fn separator() -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
     }
 }
 
-
-fn dark_mode_toggle(checked: bool) -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
-    move || {
-        iced::widget::checkbox(checked)
-            .label("Dark Mode")
-            .on_toggle(|b| MenuMessage::Custom(MenuAction::SetDarkMode(b)))
-            .boxed()
-    }
-}
-
 fn menu_row(
     checked: Option<bool>, 
     label: String, 
     keys: Option<String>, 
     arrow: Option<String>,
 ) -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
-    let size = 14.0;
+    let size = 13.0;
     move || {
         let chk = if checked.is_some() {
             widget::checkbox(checked.unwrap())
@@ -315,7 +354,7 @@ fn menu_row(
 
     let btn = 
         widget::button(rw_btn)
-            .on_press(MenuMessage::Custom(MenuAction::DoAction))
+            .on_press(MenuMessage::Custom(MenuAction::DoAction(label.clone())))
             .padding(0.0)
             .style(move|theme, status| 
                 widget::button::text(theme, status))
