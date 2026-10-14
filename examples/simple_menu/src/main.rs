@@ -85,23 +85,31 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
             label: "File",
             width: 250.0,
             items: vec![
-                MenuItem::Item("New File"),
-                MenuItem::Item("New Window"),
+                MenuItem::Item {
+                    label: "New File", size: 14.0},
+                MenuItem::Item {
+                    label:"New Window", size: 14.0},
                 MenuItem::SubMenu {
                     config: MenuConfig {
                         label: "New Window with Profile >",
                         width: 200.0,
                         items: vec![
-                            MenuItem::Item("Profile 1"),
-                            MenuItem::Item("Profile 2"),
+                            MenuItem::Item { label: "Profile 1", size: 14.0 },
+                            MenuItem::Item { label: "Profile 2", size: 14.0 },
                             MenuItem::SubMenu {
                                 config: MenuConfig {
                                     label: "Additional Profiles >",
                                     width: 100.0,
                                     items: vec![
-                                        MenuItem::Item("Profile 3"),
-                                        MenuItem::Item("Profile 4"),
-                                        MenuItem::Item("Profile 5"),
+                                        MenuItem::Item {
+                                            label: "Profile 3",
+                                            size: 14.0 },
+                                        MenuItem::Item {
+                                            label: "Profile 4",
+                                            size: 14.0 },
+                                        MenuItem::Item {
+                                            label: "Profile 5",
+                                            size: 14.0 },
                                     ],
                                     ..Default::default()
                                 },
@@ -111,25 +119,26 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     },
                 },
                 MenuItem::Element(Rc::new(separator())),
-                MenuItem::Item("Open File"),
-                MenuItem::Item("Open Folder"),
-                MenuItem::Item("Open Wokspace from File"),
+                MenuItem::Item { label: "Open File", size: 14.0 },
+                MenuItem::Item { label: "Open Folder", size: 14.0 },
+                MenuItem::Item { label: "Open Wokspace from File", size: 14.0 },
                 MenuItem::SubMenu {
                     config: MenuConfig {
                         label: "Open Recent >",
                         width: 240.0,
                         items: vec![
-                            MenuItem::Item("~/document/iced_menu"),
+                            MenuItem::Item {
+                                label: "~/document/iced_menu", size: 14.0 },
                         ],
                         ..Default::default()
                     },
                 },
                 MenuItem::Element(Rc::new(separator())),
-                MenuItem::Item("Save"),
-                MenuItem::Item("Save As..."),
-                MenuItem::Item("Save All"),
-                MenuItem::Item("Revert File"),
-                MenuItem::Item("Exit"),
+                MenuItem::Item { label: "Save", size: 14.0 },
+                MenuItem::Item { label: "Save As...", size: 14.0 },
+                MenuItem::Item { label: "Save All", size: 14.0 },
+                MenuItem::Item { label: "Revert File", size: 14.0 },
+                MenuItem::Item { label: "Exit", size: 14.0 },
             ],
             ..Default::default()
         },
@@ -138,26 +147,26 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
             width: 200.0,
             gap: None,
             items: vec![
-                MenuItem::Item("Undo"),
-                MenuItem::Item("Redo"),
-                MenuItem::Item("Cut"),
-                MenuItem::Item("Copy"),
-                MenuItem::Item("Paste"),
+                MenuItem::Item { label: "Undo", size: 14.0 },
+                MenuItem::Item { label: "Redo", size: 14.0 },
+                MenuItem::Item { label: "Cut", size: 14.0 },
+                MenuItem::Item { label: "Copy", size: 14.0 },
+                MenuItem::Item { label: "Paste", size: 14.0 },
                 MenuItem::SubMenu {
                     config: MenuConfig {
                         label: "Find >",
                         width: 150.0,
                         items: vec![
-                            MenuItem::Item("Find"),
-                            MenuItem::Item("Find Next"),
-                            MenuItem::Item("Find Previous"),
+                            MenuItem::Item { label: "Find", size: 14.0 },
+                            MenuItem::Item { label: "Find Next", size: 14.0 },
+                            MenuItem::Item { label: "Find Previous", size: 14.0 },
                         ],
                         ..Default::default()
                     },
                 },
-                MenuItem::Item("Replace"),
-                MenuItem::Item("Find in Files"),
-                MenuItem::Item("Replace in Files"),
+                MenuItem::Item { label: "Replace", size: 14.0 },
+                MenuItem::Item { label: "Find in Files", size: 14.0 },
+                MenuItem::Item { label: "Replace in Files", size: 14.0 },
                 MenuItem::Element(Rc::new(dark_mode_toggle(state.is_dark_mode))),
             ],
             ..Default::default()

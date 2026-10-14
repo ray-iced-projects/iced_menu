@@ -36,7 +36,7 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
 
 #[derive(Clone)]
 pub enum MenuItem<'a, UserMsg = ()> {
-    Item(&'a str),
+    Item{label: &'a str, size: f32},
     SubMenu {
         config: MenuConfig<'a, UserMsg>,
     },
@@ -325,8 +325,10 @@ fn render_menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
 ) -> Element<'a, MenuMessage<UserMsg>> {
     let buttons: Vec<Element<'a, MenuMessage<UserMsg>>> = config.items.iter().enumerate().map(|(idx, item)| {
         match item {
-            MenuItem::Item(label) => {
-                button(text(*label))
+            MenuItem::Item {label, size} => {
+                let lbl = 
+                    text(*label).size(*size).boxed();
+                button(lbl)
                     .width(iced::Length::Fill)
                     .on_press(MenuMessage::ItemPressed(label.to_string()))
                     .style(|theme, status|
@@ -378,8 +380,8 @@ fn render_menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                 let close_path = submenu_path;
                 
                 let label = 
-                    text(config.label)
-                    .size(config.label_size)
+                    text(sub_config.label)
+                    .size(sub_config.label_size)
                     .boxed();
                 let btn = 
                     button(label)
@@ -406,7 +408,7 @@ fn render_menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                     btn_with_mouse,
                     submenu_content,
                 )
-                .position(config.position.unwrap_or(Position::Right))
+                .position(sub_config.position.unwrap_or(Position::Right))
                 .align(config.align.unwrap_or(Alignment::Start))
                 .gap(config.gap.unwrap_or_default())
                 .on_close(MenuMessage::CloseSubmenu(close_path))
@@ -428,8 +430,10 @@ fn render_menu_with_subpopovers_static<UserMsg: Clone + 'static>(
 ) -> Element<'static, MenuMessage<UserMsg>> {
     let buttons: Vec<Element<'static, MenuMessage<UserMsg>>> = config.items.iter().enumerate().map(|(idx, item)| {
         match item {
-            MenuItem::Item(label) => {
-                button(text(*label))
+            MenuItem::Item{label, size} => {
+                let lbl = 
+                    text(*label).size(*size).boxed();
+                button(lbl)
                     .width(iced::Length::Fill)
                     .on_press(MenuMessage::ItemPressed(label.to_string()))
                     .style(|theme, status|
@@ -479,8 +483,8 @@ fn render_menu_with_subpopovers_static<UserMsg: Clone + 'static>(
                 let close_path = submenu_path;
                 
                 let label = 
-                    text(config.label)
-                    .size(config.label_size)
+                    text(sub_config.label)
+                    .size(sub_config.label_size)
                     .boxed();
                 let btn = 
                     button(label)

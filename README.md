@@ -13,9 +13,9 @@ This menu repo is not a library yet, just a proof of concept for a menu lib in t
 Define menus using the `MenuItem` enum:
 
 ```rust
-MenuItem::Item("Label")  // Regular menu item
-MenuItem::SubMenu { label: "Submenu >", items: vec![...] }  // Submenu with children
-MenuItem::Custom { key: "line" }  // Custom widget (e.g., separator)
+MenuItem::Item { label: "Label", size: 14.0 }  // Regular menu item
+MenuItem::SubMenu { config: MenuConfig { label: "Submenu >", items: vec![...], ..Default::default() } }  // Submenu with children
+MenuItem::Element(Rc::new(|| widget))  // Custom widget (e.g., separator)
 ```
 
 ## Claude help
