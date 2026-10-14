@@ -1,6 +1,6 @@
 
 use iced_menu::{Menu, MenuMessage, MenuConfig, MenuItem};
-use iced::widget::{container, space};
+use iced::widget::container;
 use iced::{Element, Task, Theme, Widget};
 use std::rc::Rc;
 
@@ -167,15 +167,11 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
 
 fn separator() -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
     || {
-        space()
-            .height(iced::Length::Fixed(1.0))
-            .width(iced::Length::Fill)
-            .boxed()
+        iced::widget::rule::horizontal(2.0).boxed()
     }
 }
 
-// Real checkbox widget — captures `checked` at config-build time;
-// configs are rebuilt in update() after each toggle so state stays current
+
 fn dark_mode_toggle(checked: bool) -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
     move || {
         iced::widget::checkbox(checked)
