@@ -38,7 +38,6 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
 pub enum MenuItem<'a, UserMsg = ()> {
     Item(&'a str),
     SubMenu {
-        label: &'a str,
         config: MenuConfig<'a, UserMsg>,
     },
     Element(Rc<dyn Fn() -> Element<'a, MenuMessage<UserMsg>> + 'a>),
@@ -335,7 +334,7 @@ fn render_menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                     .boxed()
             }
             MenuItem::Element(f) => f(),
-            MenuItem::SubMenu { label, config: sub_config } => {
+            MenuItem::SubMenu { config: sub_config } => {
                 let mut submenu_path = current_path.clone();
                 submenu_path.push(idx);
                 
@@ -378,7 +377,12 @@ fn render_menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                 let exit_path_close = submenu_path.clone();
                 let close_path = submenu_path;
                 
-                let btn = button(text(*label))
+                let label = 
+                    text(config.label)
+                    .size(config.label_size)
+                    .boxed();
+                let btn = 
+                    button(label)
                     .width(iced::Length::Fill)
                     .on_press(MenuMessage::ToggleSubmenu(toggle_path))
                     .style(|theme, status| button::text(theme, status))
@@ -433,7 +437,7 @@ fn render_menu_with_subpopovers_static<UserMsg: Clone + 'static>(
                     .boxed()
             }
             MenuItem::Element(f) => f(),
-            MenuItem::SubMenu { label, config: sub_config } => {
+            MenuItem::SubMenu { config: sub_config } => {
                 let mut submenu_path = current_path.clone();
                 submenu_path.push(idx);
                 
@@ -474,7 +478,12 @@ fn render_menu_with_subpopovers_static<UserMsg: Clone + 'static>(
                 let exit_path_close = submenu_path.clone();
                 let close_path = submenu_path;
                 
-                let btn = button(text(*label))
+                let label = 
+                    text(config.label)
+                    .size(config.label_size)
+                    .boxed();
+                let btn = 
+                    button(label)
                     .width(iced::Length::Fill)
                     .on_press(MenuMessage::ToggleSubmenu(toggle_path))
                     .style(|theme, status| button::text(theme, status))

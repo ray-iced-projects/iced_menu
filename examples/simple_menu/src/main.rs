@@ -88,15 +88,15 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::Item("New File"),
                 MenuItem::Item("New Window"),
                 MenuItem::SubMenu {
-                    label: "New Window with Profile >",
                     config: MenuConfig {
+                        label: "New Window with Profile >",
                         width: 200.0,
                         items: vec![
                             MenuItem::Item("Profile 1"),
                             MenuItem::Item("Profile 2"),
                             MenuItem::SubMenu {
-                                label: "Additional Profiles >",
                                 config: MenuConfig {
+                                    label: "Additional Profiles >",
                                     width: 100.0,
                                     items: vec![
                                         MenuItem::Item("Profile 3"),
@@ -115,8 +115,8 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::Item("Open Folder"),
                 MenuItem::Item("Open Wokspace from File"),
                 MenuItem::SubMenu {
-                    label: "Open Recent >",
                     config: MenuConfig {
+                        label: "Open Recent >",
                         width: 240.0,
                         items: vec![
                             MenuItem::Item("~/document/iced_menu"),
@@ -144,8 +144,8 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::Item("Copy"),
                 MenuItem::Item("Paste"),
                 MenuItem::SubMenu {
-                    label: "Find >",
                     config: MenuConfig {
+                        label: "Find >",
                         width: 150.0,
                         items: vec![
                             MenuItem::Item("Find"),

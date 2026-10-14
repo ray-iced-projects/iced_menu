@@ -101,20 +101,22 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
             label_size: 14.0,
             width: 250.0,
             items: vec![
-                MenuItem::Element(Rc::new(menu_row(None, "New Text File".to_string(), Some("Ctrl+N".to_string()), None))),
-                MenuItem::Element(Rc::new(menu_row(None, "New File".to_string(), Some("Ctrl+Alt+Super+N".to_string()), None))),
+                MenuItem::Element(
+                    Rc::new(menu_row(None, "New Text File".to_string(), Some("Ctrl+N".to_string()), None))),
+                MenuItem::Element(
+                    Rc::new(menu_row(None, "New File".to_string(), Some("Ctrl+Alt+Super+N".to_string()), None))),
                 MenuItem::Item("New Window"),
                 MenuItem::SubMenu {
-                    label: "New Window with Profile >",
                     config: MenuConfig {
+                        label: "New Window with Profile >",
                         width: 200.0,
                         label_size: 14.0,
                         items: vec![
                             MenuItem::Item("Profile 1"),
                             MenuItem::Item("Profile 2"),
                             MenuItem::SubMenu {
-                                label: "Additional Profiles >",
                                 config: MenuConfig {
+                                    label: "Additional Profiles >",
                                     width: 100.0,
                                     label_size: 14.0,
                                     items: vec![
@@ -134,8 +136,8 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::Item("Open Folder"),
                 MenuItem::Item("Open Wokspace from File"),
                 MenuItem::SubMenu {
-                    label: "Open Recent >",
                     config: MenuConfig {
+                        label: "Open Recent >",
                         width: 240.0,
                         items: vec![
                             MenuItem::Item("~/document/iced_menu"),
@@ -173,8 +175,8 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::Item("Copy"),
                 MenuItem::Item("Paste"),
                 MenuItem::SubMenu {
-                    label: "Find >",
                     config: MenuConfig {
+                        label: "Find >",
                         width: 150.0,
                         items: vec![
                             MenuItem::Item("Find"),
