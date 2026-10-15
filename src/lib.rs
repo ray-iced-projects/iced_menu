@@ -246,7 +246,7 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
         for (idx, config) in self.configs.iter().enumerate() {
             let pop = 
                 if self.is_open[idx] {
-                    let content = render_menu_with_subpopovers(config, self.open_submenus.clone(), vec![idx]);
+                    let content = menu_with_subpopovers(config, self.open_submenus.clone(), vec![idx]);
                     Some(
                         container(content)
                             .style(|theme: &Theme| container::bordered_box(theme))
@@ -281,15 +281,15 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
 
 }
 
-// Specialized impl for 'static menu that doesn't require &'a self
+// Menu construction
 impl<UserMsg: Clone + 'static> Menu<'static, UserMsg> {
-    pub fn get_menu_static(&self) -> Element<'static, MenuMessage<UserMsg>> {
+    pub fn construct_menu(&self) -> Element<'static, MenuMessage<UserMsg>> {
         let mut menu_bar = vec![];
         
         for (idx, config) in self.configs.iter().enumerate() {
             let pop = 
                 if self.is_open[idx] {
-                    let content = render_menu_with_subpopovers_static(config, self.open_submenus.clone(), vec![idx]);
+                    let content = submenu_with_subpopovers(config, self.open_submenus.clone(), vec![idx]);
                     Some(
                         container(content)
                             .style(|theme: &Theme| container::bordered_box(theme))
@@ -323,8 +323,8 @@ impl<UserMsg: Clone + 'static> Menu<'static, UserMsg> {
     }
 }
 
-/// Renders menu items with subpopovers for each submenu
-fn render_menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
+/// Menu items with subpopovers for each submenu
+fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
     config: &'a MenuConfig<'a, UserMsg>,
     open_submenus: Vec<usize>,
     current_path: Vec<usize>,
@@ -352,7 +352,7 @@ fn render_menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                     open_submenus[0..submenu_path.len()] == submenu_path[..]);
                 
                 let submenu_content = if is_open {
-                    let content = render_menu_with_subpopovers(
+                    let content = menu_with_subpopovers(
                         sub_config,
                         open_submenus.clone(),
                         submenu_path.clone(),
@@ -429,7 +429,7 @@ fn render_menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                     open_submenus[0..submenu_path.len()] == submenu_path[..]);
 
                 let submenu_content = if is_open {
-                    let inner = render_menu_with_subpopovers(
+                    let inner = menu_with_subpopovers(
                         sub_config,
                         open_submenus.clone(),
                         submenu_path.clone(),
@@ -488,8 +488,8 @@ fn render_menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
         .boxed()
 }
 
-/// Specialized version for 'static MenuConfigs
-fn render_menu_with_subpopovers_static<UserMsg: Clone + 'static>(
+/// SubMenus
+fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
     config: &MenuConfig<'static, UserMsg>,
     open_submenus: Vec<usize>,
     current_path: Vec<usize>,
@@ -516,7 +516,7 @@ fn render_menu_with_subpopovers_static<UserMsg: Clone + 'static>(
                     open_submenus[0..submenu_path.len()] == submenu_path[..]);
                 
                 let submenu_content = if is_open {
-                    let content = render_menu_with_subpopovers_static(
+                    let content = submenu_with_subpopovers(
                         sub_config,
                         open_submenus.clone(),
                         submenu_path.clone(),
@@ -590,7 +590,7 @@ fn render_menu_with_subpopovers_static<UserMsg: Clone + 'static>(
                     open_submenus[0..submenu_path.len()] == submenu_path[..]);
 
                 let submenu_content = if is_open {
-                    let inner = render_menu_with_subpopovers_static(
+                    let inner = submenu_with_subpopovers(
                         sub_config,
                         open_submenus.clone(),
                         submenu_path.clone(),

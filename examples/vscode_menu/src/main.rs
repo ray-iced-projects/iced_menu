@@ -19,7 +19,7 @@ enum MenuAction {
     SetAutoSave(bool),
 }
 
-// Holds all state that custom menu widgets need to reflect
+// Holds all state that custom menu widgets need
 #[derive(Debug, Clone, Default)]
 struct State {
     is_checked: bool,
@@ -43,6 +43,7 @@ impl App {
         let mut menu = Menu::default();
         menu.configs = configs;
         menu.is_open = vec![false; len];
+        
         Self {
             menu,
             state,
@@ -82,7 +83,7 @@ impl App {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let menu = self.menu.get_menu_static().map(Message::Menu);
+        let menu = self.menu.construct_menu().map(Message::Menu);
         container(menu)
             .padding(10.0)
             .boxed()
@@ -182,7 +183,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::SubElement {
                     content: Rc::new(sub_menu_row("Preferences")),
                     config: MenuConfig {
-                        width: 350.0,
+                        width: 300.0,
                         items: vec![
                             MenuItem::Element(Rc::new(
                                 menu_row(None, "Profiles".to_string(), None, None ))),
@@ -228,7 +229,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::SubElement {
                     content: Rc::new(sub_menu_row("Copy as")),
                     config: MenuConfig {
-                        width: 350.0,
+                        width: 250.0,
                         items: vec![
                             MenuItem::Item { label: "Copy Remote File URL", size },
                             MenuItem::Item { label: "Copy Remote File URL from...", size },

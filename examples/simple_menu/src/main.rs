@@ -1,7 +1,7 @@
 
 use iced_menu::{Menu, MenuMessage, MenuConfig, MenuItem};
 use iced::widget::container;
-use iced::{Element, Task, Theme, Widget};
+use iced::{Element, Task, Theme, Widget, window};
 use std::rc::Rc;
 
 pub fn main() -> iced::Result {
@@ -55,7 +55,11 @@ impl App {
                 MenuMessage::ItemPressed(label) => {
                     println!("Item pressed: {}", &label);
                     self.menu.clear_timers();
-                    Task::none()
+                    if label == "Exit" {
+                        window::latest().and_then(window::close)
+                    } else {
+                        Task::none()
+                    }
                 }
                 MenuMessage::Custom(action) => match action {
                     MenuAction::SetDarkMode(checked) => {
@@ -72,7 +76,7 @@ impl App {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let menu = self.menu.get_menu_static().map(Message::Menu);
+        let menu = self.menu.construct_menu().map(Message::Menu);
         container(menu)
             .padding(10.0)
             .boxed()
