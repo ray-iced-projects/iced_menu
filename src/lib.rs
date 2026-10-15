@@ -1,3 +1,61 @@
+//! A menu widget for Iced built on Popover, Stack, and MouseArea.
+//!
+//! This widget enables building interactive menus with:
+//! - Dropdown items with hover navigation and configurable delays
+//! - Unlimited nesting depth with submenus
+//! - Custom widgets as menu items (separators, checkboxes, complex layouts)
+//! - Type-safe message handling via custom `UserMsg` types
+//!
+//! # Basic Example
+//!
+//! ```ignore
+//! use iced_menu::{Menu, MenuConfig, MenuItem, MenuMessage};
+//! use iced::Element;
+//! use std::rc::Rc;
+//!
+//! // Define your menu action type
+//! #[derive(Debug, Clone)]
+//! enum MenuAction {
+//!     NewFile,
+//!     OpenFile,
+//!     Save,
+//! }
+//!
+//! // Create a menu configuration
+//! let menu_config = MenuConfig {
+//!     label: "File",
+//!     label_size: 14.0,
+//!     width: 200.0,
+//!     items: vec![
+//!         MenuItem::Item { label: "New", size: 14.0 },
+//!         MenuItem::Item { label: "Open", size: 14.0 },
+//!         MenuItem::Item { label: "Save", size: 14.0 },
+//!     ],
+//!     ..Default::default()
+//! };
+//!
+//! // Initialize the menu
+//! let mut menu = Menu::default();
+//! menu.configs = vec![menu_config];
+//! menu.is_open = vec![false];
+//!
+//! // Handle messages from the menu
+//! let message = MenuMessage::ItemPressed("Save".to_string());
+//! let _task = menu.update(message);
+//! ```
+//!
+//! # Menu Items
+//!
+//! - **`Item`**: Simple text label with press handling
+//! - **`SubMenu`**: Dropdown with children, uses default label rendering
+//! - **`SubElement`**: Dropdown with custom trigger content (for complex layouts)
+//! - **`Element`**: Arbitrary widget (separators, checkboxes, custom layouts)
+//!
+//! # Rendering
+//!
+//! Use `menu.construct_menu()` to render the menu widget.
+//! The menu handles all hover timing, submenu open/close logic internally.
+//!
 
 use iced::widget::{button, text, column, container, row, mouse_area};
 use iced::{Alignment, Element, Task, Theme, Widget};
@@ -9,6 +67,27 @@ use crate::widgets::popover::{Popover, Position};
 
 
 #[derive(Clone)]
+/// Configuration for a menu or submenu dropdown.
+///
+/// # Fields
+/// - `label`: The text shown on the menu button
+/// - `label_size`: Font size for the label
+/// - `items`: Vec of menu items (can include submenus)
+/// - `width`: Fixed width of the dropdown
+/// - `gap`: Optional spacing between trigger and popover
+/// - `position`: Where the popover opens (Right, Left, Top, Bottom)
+/// - `align`: Vertical/horizontal alignment of popover content
+///
+/// # Example
+/// ```ignore
+/// MenuConfig {
+///     label: "File",
+///     label_size: 14.0,
+///     width: 250.0,
+///     items: vec![...],
+///     ..Default::default()
+/// }
+/// ```
 pub struct MenuConfig<'a, UserMsg = ()> {
     pub label: &'a str,
     pub label_size: f32,
@@ -35,6 +114,39 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
 }
 
 #[derive(Clone)]
+/// Menu item variants that can appear in a dropdown.
+///
+/// # Variants
+///
+/// - **`Item`**: A clickable menu entry with label and font size
+///   ```ignore
+///   MenuItem::Item { label: "Save", size: 14.0 }
+///   ```
+///
+/// - **`SubMenu`**: A dropdown trigger with automatic label rendering
+///   ```ignore
+///   MenuItem::SubMenu {
+///       config: MenuConfig {
+///           label: "File >",
+///           items: vec![...],
+///           ..Default::default()
+///       }
+///   }
+///   ```
+///
+/// - **`SubElement`**: A dropdown trigger with custom content (row, checkbox, etc.)
+///   Use when you need complex layouts like icon + label + shortcut key
+///   ```ignore
+///   MenuItem::SubElement {
+///       content: Rc::new(|| { /* return row with label, keys, icon */ }),
+///       config: MenuConfig { ... }
+///   }
+///   ```
+///
+/// - **`Element`**: Arbitrary widget content (separators, checkboxes, custom layouts)
+///   ```ignore
+///   MenuItem::Element(Rc::new(|| iced::widget::rule::horizontal(2.0).boxed()))
+///   ```
 pub enum MenuItem<'a, UserMsg = ()> {
     Item{label: &'a str, size: f32},
     SubMenu {
@@ -50,6 +162,25 @@ pub enum MenuItem<'a, UserMsg = ()> {
 }
 
 
+/// Menu state and message handler.
+///
+/// Manages dropdown open/close state, submenu navigation, and hover timing.
+/// Update this with messages from `get_menu()` to respond to user interactions.
+///
+/// # Example
+/// ```ignore
+/// let mut menu = Menu::default();
+/// menu.configs = vec![file_menu, edit_menu];
+/// menu.is_open = vec![false, false];
+///
+/// // In your update handler:
+/// match message {
+///     Message::Menu(mm) => {
+///         let task = menu.update(mm);
+///         // ... handle task
+///     }
+/// }
+/// ```
 pub struct Menu<'a, UserMsg = ()> {
     pub configs: Vec<MenuConfig<'a, UserMsg>>,
     pub is_open: Vec<bool>,
@@ -61,6 +192,7 @@ pub struct Menu<'a, UserMsg = ()> {
 }
 
 impl<'a, UserMsg> Menu<'a, UserMsg> {
+    /// Create an empty menu.
     pub fn default() -> Self {
         Self {
             configs: Vec::new(),
@@ -72,6 +204,18 @@ impl<'a, UserMsg> Menu<'a, UserMsg> {
             close_timer: None,
         }
     }
+
+    /// Initialize menu with configurations and set up state.
+    ///
+    /// # Arguments
+    /// * `menu_configs` - Vector of MenuConfig, one per top-level menu button
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut menu = Menu::default();
+    /// let configs = vec![file_config, edit_config];
+    /// menu = menu.new(configs);
+    /// ```
     pub fn new(&mut self, menu_configs: Vec<MenuConfig<'a, UserMsg>>) -> Self {
         let mut m = Menu::default();
         m.is_open = vec![false; menu_configs.len()];
@@ -82,6 +226,23 @@ impl<'a, UserMsg> Menu<'a, UserMsg> {
 
 
 #[derive(Debug, Clone)]
+/// Messages emitted by menu interactions.
+///
+/// Most variants are internal; handle `ItemPressed` and `Custom` in your update loop.
+///
+/// # Important Variants
+///
+/// - `ItemPressed(String)`: User clicked a menu item; label is provided
+/// - `Custom(UserMsg)`: Custom message from a menu widget (checkbox, button, etc.)
+///
+/// # Example
+/// ```ignore
+/// match message {
+///     MenuMessage::ItemPressed(label) => println!("Clicked: {}", label),
+///     MenuMessage::Custom(action) => handle_custom_action(action),
+///     _ => { /* internal; forward to menu.update() */ }
+/// }
+/// ```
 pub enum MenuMessage<UserMsg = ()> {
     Close(usize),
     OpenOnHover(usize),
@@ -230,6 +391,7 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
         }
     }
 
+    /// Clear all open menus and pending timers.
     pub fn clear_timers(&mut self) {
         self.is_open.iter_mut().for_each(|o| *o = false);
         self.open_submenus.clear();
@@ -239,6 +401,15 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
         self.close_timer = None;
     }
 
+    /// Render the menu bar as an Element.
+    ///
+    /// Call this in your view() and map its output to your Message type.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let menu = menu.get_menu().map(Message::Menu);
+    /// container(menu).padding(10.0).boxed()
+    /// ```
     pub fn get_menu(&'a self) -> Element<'a, MenuMessage<UserMsg>> {
 
         let mut menu_bar = vec![];
