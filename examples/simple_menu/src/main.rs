@@ -52,8 +52,11 @@ impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Menu(mm) => match mm {
-                MenuMessage::ItemPressed(label) => {
-                    println!("Item pressed: {}", &label);
+                MenuMessage::ItemPressed(label, menubar_index) => {
+                    let menubar_name = menubar_index
+                        .and_then(|idx| self.menu.configs.get(idx).map(|c| c.label))
+                        .unwrap_or("Unknown");
+                    println!("{} > {}", menubar_name, &label);
                     self.menu.clear_timers();
                     if label == "Exit" {
                         window::latest().and_then(window::close)

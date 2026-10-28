@@ -256,7 +256,7 @@ pub enum MenuMessage<UserMsg = ()> {
     OpenSubmenuOnHover(Vec<usize>),
     OpenSubmenuTimer(Vec<usize>),
     CancelSubmenuTimer(Vec<usize>),
-    ItemPressed(String),
+    ItemPressed(String, Option<usize>),  // (label, menubar_index)
     Custom(UserMsg),
 }
 
@@ -382,7 +382,7 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                 self.close_timer = None;
                 Task::none()
             },
-            MenuMessage::ItemPressed(_label) => {
+            MenuMessage::ItemPressed(_label, _menubar_index) => {
                 // Let the application handle item presses
                 Task::none()
             },
@@ -419,7 +419,7 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
         for (idx, config) in self.configs.iter().enumerate() {
             let pop = 
                 if self.is_open[idx] {
-                    let content = menu_with_subpopovers(config, self.open_submenus.clone(), vec![idx]);
+                    let content = menu_with_subpopovers(config, self.open_submenus.clone(), vec![idx], idx);
                     Some(
                         container(content)
                             .style(|theme: &Theme| container::bordered_box(theme))
@@ -462,7 +462,7 @@ impl<UserMsg: Clone + 'static> Menu<'static, UserMsg> {
         for (idx, config) in self.configs.iter().enumerate() {
             let pop = 
                 if self.is_open[idx] {
-                    let content = submenu_with_subpopovers(config, self.open_submenus.clone(), vec![idx]);
+                    let content = submenu_with_subpopovers(config, self.open_submenus.clone(), vec![idx], idx);
                     Some(
                         container(content)
                             .style(|theme: &Theme| container::bordered_box(theme))
@@ -501,6 +501,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
     config: &'a MenuConfig<'a, UserMsg>,
     open_submenus: Vec<usize>,
     current_path: Vec<usize>,
+    menubar_index: usize,
 ) -> Element<'a, MenuMessage<UserMsg>> {
     let buttons: Vec<Element<'a, MenuMessage<UserMsg>>> = config.items.iter().enumerate().map(|(idx, item)| {
         match item {
@@ -509,7 +510,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                     text(*label).size(*size).boxed();
                 button(lbl)
                     .width(iced::Length::Fill)
-                    .on_press(MenuMessage::ItemPressed(label.to_string()))
+                    .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
                     .style(|theme, status|
                         button::text(theme, status))
                     .boxed()
@@ -529,6 +530,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                         sub_config,
                         open_submenus.clone(),
                         submenu_path.clone(),
+                        menubar_index,
                     );
                     
                     let leave_path = submenu_path.clone();
@@ -606,6 +608,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                         sub_config,
                         open_submenus.clone(),
                         submenu_path.clone(),
+                        menubar_index,
                     );
                     let leave_path = submenu_path.clone();
                     let enter_path = submenu_path.clone();
@@ -666,6 +669,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
     config: &MenuConfig<'static, UserMsg>,
     open_submenus: Vec<usize>,
     current_path: Vec<usize>,
+    menubar_index: usize,
 ) -> Element<'static, MenuMessage<UserMsg>> {
     let buttons: Vec<Element<'static, MenuMessage<UserMsg>>> = config.items.iter().enumerate().map(|(idx, item)| {
         match item {
@@ -674,7 +678,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                     text(*label).size(*size).boxed();
                 button(lbl)
                     .width(iced::Length::Fill)
-                    .on_press(MenuMessage::ItemPressed(label.to_string()))
+                    .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
                     .style(|theme, status|
                         button::text(theme, status))
                     .boxed()
@@ -693,6 +697,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                         sub_config,
                         open_submenus.clone(),
                         submenu_path.clone(),
+                        menubar_index,
                     );
                     
                     let leave_path = submenu_path.clone();
@@ -767,6 +772,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                         sub_config,
                         open_submenus.clone(),
                         submenu_path.clone(),
+                        menubar_index,
                     );
                     let leave_path = submenu_path.clone();
                     let enter_path = submenu_path.clone();
