@@ -191,9 +191,9 @@ pub struct Menu<'a, UserMsg = ()> {
     pub close_timer: Option<Instant>,
 }
 
-impl<'a, UserMsg> Menu<'a, UserMsg> {
+impl<'a, UserMsg> Default for Menu<'a, UserMsg> {
     /// Create an empty menu.
-    pub fn default() -> Self {
+    fn default() -> Self {
         Self {
             configs: Vec::new(),
             is_open: Vec::new(),
@@ -204,7 +204,9 @@ impl<'a, UserMsg> Menu<'a, UserMsg> {
             close_timer: None,
         }
     }
+}
 
+impl<'a, UserMsg> Menu<'a, UserMsg> {
     /// Initialize menu with configurations and set up state.
     ///
     /// # Arguments

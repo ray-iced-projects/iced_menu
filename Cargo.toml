@@ -2,8 +2,14 @@
 name = "iced_menu"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.88"
 authors = ["Charles Ray <ray.iced.projects@gmail.com>"]
 description = "A Menu using Iced gui."
+license = "Unlicense"
+repository = "https://github.com/ray-iced-projects/iced_menu"
+readme = "README.md"
+keywords = ["iced", "menu", "gui", "widget"]
+categories = ["gui"]
 
 [lib]
 name = "iced_menu"
