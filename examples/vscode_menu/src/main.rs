@@ -9,6 +9,8 @@ use std::rc::Rc;
 pub fn main() -> iced::Result {
     iced::application(App::default, App::update, App::view)
         .theme(Theme::TokyoNight)
+        .window_size((500, 500))
+        .centered()
         .run()
 }
 
@@ -56,8 +58,8 @@ impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Menu(mm) => match mm {
-                MenuMessage::ItemPressed(label) => {
-                    println!("Item pressed: {}", &label);
+                MenuMessage::ItemPressed(label, bar_index) => {
+                    println!("Item pressed: index {}, label{}", &bar_index.unwrap(), &label);
                     self.menu.clear_timers();
                     Task::none()
                 }
@@ -70,7 +72,7 @@ impl App {
                             Task::none()
                         }
                     }
-                    MenuAction::SetAutoSave(is_checked) => {
+                MenuAction::SetAutoSave(is_checked) => {
                         println!("SetAutoSave: {}", is_checked);
                         self.state.is_checked = is_checked;
                         self.menu.configs = define_menu_configs(&self.state);
