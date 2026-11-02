@@ -337,56 +337,15 @@ where
         let popup_size = popup_tree.size;
         let content_bounds = layout.bounds() + translation;
 
-        let popup_position = {
-            let vp = Rectangle::with_size(window);
-            
-            // Calculate horizontal alignment for vertical positions
-            let x_aligned = match self.align {
-                Alignment::Start => content_bounds.x,
-                Alignment::Center => content_bounds.x + (content_bounds.width - popup_size.width) / 2.0,
-                Alignment::End => content_bounds.x + content_bounds.width - popup_size.width,
-            };
-            
-            // Calculate vertical alignment for horizontal positions
-            let y_aligned = match self.align {
-                Alignment::Start => content_bounds.y,
-                Alignment::Center => content_bounds.y + (content_bounds.height - popup_size.height) / 2.0,
-                Alignment::End => content_bounds.y + content_bounds.height - popup_size.height,
-            };
-            
-            // For backward compatibility, keep centered positioning for Auto position
-            let x_center = content_bounds.x + (content_bounds.width - popup_size.width) / 2.0;
-            let y_center = content_bounds.y + (content_bounds.height - popup_size.height) / 2.0;
-            
-            let (x, y) = match self.position {
-                Position::Auto => {
-                    let space_below = (vp.y + vp.height) - (content_bounds.y + content_bounds.height);
-                    let space_above = content_bounds.y - vp.y;
-                    let space_right = (vp.x + vp.width) - (content_bounds.x + content_bounds.width);
-                    let space_left = content_bounds.x - vp.x;
-                    if space_below >= space_above && space_below >= space_right && space_below >= space_left {
-                        (x_center, content_bounds.y + content_bounds.height + self.gap)
-                    } else if space_above >= space_right && space_above >= space_left {
-                        (x_center, content_bounds.y - popup_size.height - self.gap)
-                    } else if space_right >= space_left {
-                        (content_bounds.x + content_bounds.width + self.gap, y_center)
-                    } else {
-                        (content_bounds.x - popup_size.width - self.gap, y_center)
-                    }
-                }
-                Position::Top => (x_aligned, content_bounds.y - popup_size.height - self.gap),
-                Position::Bottom => (x_aligned, content_bounds.y + content_bounds.height + self.gap),
-                Position::Left => (content_bounds.x - popup_size.width - self.gap, y_aligned),
-                Position::Right => (content_bounds.x + content_bounds.width + self.gap, y_aligned),
-            };
-            let mut pos = Point::new(x, y);
-            if self.snap_within_viewport {
-                let vp = Rectangle::with_size(window);
-                pos.x = pos.x.max(vp.x).min(vp.x + vp.width - popup_size.width);
-                pos.y = pos.y.max(vp.y).min(vp.y + vp.height - popup_size.height);
-            }
-            pos
-        };
+        let popup_position = resolve_popup_position(
+            content_bounds,
+            popup_size,
+            self.position,
+            self.align,
+            self.gap,
+            Rectangle::with_size(window),
+            self.snap_within_viewport,
+        );
 
         let popup_layout = Layout::new(popup_size).move_to(popup_position);
 
@@ -422,6 +381,61 @@ where
 enum Popup<'a, Message, Theme, Renderer> {
     Opaque(Opaque<'a, Message, Theme, Renderer>),
     Transparent(Element<'a, Message, Theme, Renderer>),
+}
+
+fn resolve_popup_position(
+    content_bounds: Rectangle,
+    popup_size: Size,
+    position: Position,
+    align: Alignment,
+    gap: f32,
+    viewport: Rectangle,
+    snap_within_viewport: bool,
+) -> Point {
+    let x_aligned = match align {
+        Alignment::Start => content_bounds.x,
+        Alignment::Center => content_bounds.x + (content_bounds.width - popup_size.width) / 2.0,
+        Alignment::End => content_bounds.x + content_bounds.width - popup_size.width,
+    };
+
+    let y_aligned = match align {
+        Alignment::Start => content_bounds.y,
+        Alignment::Center => content_bounds.y + (content_bounds.height - popup_size.height) / 2.0,
+        Alignment::End => content_bounds.y + content_bounds.height - popup_size.height,
+    };
+
+    let x_center = content_bounds.x + (content_bounds.width - popup_size.width) / 2.0;
+    let y_center = content_bounds.y + (content_bounds.height - popup_size.height) / 2.0;
+
+    let mut position = match position {
+        Position::Auto => {
+            let space_below = (viewport.y + viewport.height) - (content_bounds.y + content_bounds.height);
+            let space_above = content_bounds.y - viewport.y;
+            let space_right = (viewport.x + viewport.width) - (content_bounds.x + content_bounds.width);
+            let space_left = content_bounds.x - viewport.x;
+
+            if space_below >= space_above && space_below >= space_right && space_below >= space_left {
+                Point::new(x_center, content_bounds.y + content_bounds.height + gap)
+            } else if space_above >= space_right && space_above >= space_left {
+                Point::new(x_center, content_bounds.y - popup_size.height - gap)
+            } else if space_right >= space_left {
+                Point::new(content_bounds.x + content_bounds.width + gap, y_center)
+            } else {
+                Point::new(content_bounds.x - popup_size.width - gap, y_center)
+            }
+        }
+        Position::Top => Point::new(x_aligned, content_bounds.y - popup_size.height - gap),
+        Position::Bottom => Point::new(x_aligned, content_bounds.y + content_bounds.height + gap),
+        Position::Left => Point::new(content_bounds.x - popup_size.width - gap, y_aligned),
+        Position::Right => Point::new(content_bounds.x + content_bounds.width + gap, y_aligned),
+    };
+
+    if snap_within_viewport {
+        position.x = position.x.max(viewport.x).min(viewport.x + viewport.width - popup_size.width);
+        position.y = position.y.max(viewport.y).min(viewport.y + viewport.height - popup_size.height);
+    }
+
+    position
 }
 
 /// The position of the popover.
