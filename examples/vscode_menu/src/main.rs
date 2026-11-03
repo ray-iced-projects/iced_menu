@@ -9,7 +9,7 @@ use std::rc::Rc;
 pub fn main() -> iced::Result {
     iced::application(App::default, App::update, App::view)
         .theme(Theme::TokyoNight)
-        .window_size((500, 500))
+        .window_size((700, 500))
         .centered()
         .run()
 }

@@ -57,7 +57,7 @@
 //! The menu handles all hover timing, submenu open/close logic internally.
 //!
 
-use iced::widget::{button, text, column, container, row, mouse_area};
+use iced::widget::{button, column, container, mouse_area, row, scrollable, text};
 use iced::{Alignment, Element, Task, Theme, Widget};
 use std::time::{Duration, Instant};
 use std::rc::Rc;
@@ -94,8 +94,10 @@ pub struct MenuConfig<'a, UserMsg = ()> {
     pub items: Vec<MenuItem<'a, UserMsg>>,
     pub width: f32,
     pub gap: Option<f32>,
+    pub spacing: f32,
     pub position: Option<Position>,
     pub align: Option<Alignment>,
+    pub scrollable_height: Option<f32>,
 }
 
 // Manual Default so UserMsg: Default is never required
@@ -107,8 +109,10 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
             items: Vec::new(),
             width: 200.0,
             gap: None,
+            spacing: 0.0,
             position: None,
             align: None,
+            scrollable_height: None,
         }
     }
 }
@@ -659,7 +663,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
         }
     }).collect();
 
-    container(column(buttons))
+    container(column(buttons).spacing(config.spacing))
         .width(iced::Length::Fixed(config.width))
         .boxed()
 }
@@ -823,7 +827,12 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
         }
     }).collect();
 
-    container(column(buttons))
+    let cont = container(column(buttons).spacing(config.spacing))
         .width(iced::Length::Fixed(config.width))
-        .boxed()
+        .boxed();
+
+    if let Some(h) = config.scrollable_height {
+        scrollable(cont).height(h).boxed()
+    } else { cont }
+    
 }
