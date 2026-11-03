@@ -98,6 +98,7 @@ pub struct MenuConfig<'a, UserMsg = ()> {
     pub position: Option<Position>,
     pub align: Option<Alignment>,
     pub scrollable_height: Option<f32>,
+    pub outside_close_delay: Option<Duration>,
 }
 
 // Manual Default so UserMsg: Default is never required
@@ -113,6 +114,7 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
             position: None,
             align: None,
             scrollable_height: None,
+            outside_close_delay: Some(Duration::from_secs(1)),
         }
     }
 }
@@ -193,6 +195,8 @@ pub struct Menu<'a, UserMsg = ()> {
     pub pending_timer: Option<Instant>,
     pub pending_close: Option<Vec<usize>>,
     pub close_timer: Option<Instant>,
+    pub pending_menu_close: Option<usize>,
+    pub menu_close_timer: Option<Instant>,
 }
 
 impl<'a, UserMsg> Default for Menu<'a, UserMsg> {
@@ -206,6 +210,8 @@ impl<'a, UserMsg> Default for Menu<'a, UserMsg> {
             pending_timer: None,
             pending_close: None,
             close_timer: None,
+            pending_menu_close: None,
+            menu_close_timer: None,
         }
     }
 }
@@ -252,6 +258,9 @@ impl<'a, UserMsg> Menu<'a, UserMsg> {
 pub enum MenuMessage<UserMsg = ()> {
     Close(usize),
     OpenOnHover(usize),
+    StartCloseMenuTimer(usize),
+    CloseMenuAfterDelay(usize),
+    CancelCloseMenuTimer(usize),
     CloseSubmenu(Vec<usize>),
     StartCloseSubmenuTimer(Vec<usize>),
     CloseSubmenuAfterDelay(Vec<usize>),
@@ -274,6 +283,10 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                 }
                 self.pending_submenu = None;
                 self.pending_timer = None;
+                self.pending_close = None;
+                self.close_timer = None;
+                self.pending_menu_close = None;
+                self.menu_close_timer = None;
                 Task::none()
             },
             MenuMessage::OpenOnHover(idx) => {
@@ -282,6 +295,48 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                 self.open_submenus.clear();
                 self.pending_submenu = None;
                 self.pending_timer = None;
+                self.pending_close = None;
+                self.close_timer = None;
+                self.pending_menu_close = None;
+                self.menu_close_timer = None;
+                Task::none()
+            },
+            MenuMessage::StartCloseMenuTimer(idx) => {
+                if self.is_open[idx] {
+                    let delay = self.configs
+                        .get(idx)
+                        .and_then(|config| config.outside_close_delay)
+                        .unwrap_or(Duration::from_secs(2));
+
+                    self.pending_menu_close = Some(idx);
+                    self.menu_close_timer = Some(Instant::now());
+                    Task::perform(
+                        async move {
+                            std::thread::sleep(delay);
+                            idx
+                        },
+                        |idx| MenuMessage::CloseMenuAfterDelay(idx)
+                    )
+                } else {
+                    self.pending_menu_close = None;
+                    self.menu_close_timer = None;
+                    Task::none()
+                }
+            },
+            MenuMessage::CloseMenuAfterDelay(idx) => {
+                if self.pending_menu_close == Some(idx) {
+                    self.is_open[idx] = false;
+                    self.open_submenus.clear();
+                    self.pending_menu_close = None;
+                    self.menu_close_timer = None;
+                }
+                Task::none()
+            },
+            MenuMessage::CancelCloseMenuTimer(idx) => {
+                if self.pending_menu_close == Some(idx) {
+                    self.pending_menu_close = None;
+                    self.menu_close_timer = None;
+                }
                 Task::none()
             },
             MenuMessage::ToggleSubmenu(path) => {
@@ -405,6 +460,8 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
         self.pending_timer = None;
         self.pending_close = None;
         self.close_timer = None;
+        self.pending_menu_close = None;
+        self.menu_close_timer = None;
     }
 
     /// Render the menu bar as an Element.
@@ -424,8 +481,12 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
             let pop = 
                 if self.is_open[idx] {
                     let content = menu_with_subpopovers(config, self.open_submenus.clone(), vec![idx], idx);
+                    let popup = mouse_area(content)
+                        .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
+                        .on_exit(MenuMessage::StartCloseMenuTimer(idx))
+                        .boxed();
                     Some(
-                        container(content)
+                        container(popup)
                             .style(|theme: &Theme| container::bordered_box(theme))
                             .padding(5.0)
                             .boxed()
@@ -443,12 +504,15 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
             menu_bar.push(Popover::new(
                 mouse_area(btn)
                     .on_enter(MenuMessage::OpenOnHover(idx))
+                    .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
+                    .on_exit(MenuMessage::StartCloseMenuTimer(idx))
                     .boxed(),
                 pop,
             )
             .gap(5.0)
             .position(Position::Bottom)
             .align(Alignment::Start)
+            .outside_close_delay(config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
             .on_close(MenuMessage::Close(idx)).boxed());
         }
         
@@ -467,8 +531,12 @@ impl<UserMsg: Clone + 'static> Menu<'static, UserMsg> {
             let pop = 
                 if self.is_open[idx] {
                     let content = submenu_with_subpopovers(config, self.open_submenus.clone(), vec![idx], idx);
+                    let popup = mouse_area(content)
+                        .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
+                        .on_exit(MenuMessage::StartCloseMenuTimer(idx))
+                        .boxed();
                     Some(
-                        container(content)
+                        container(popup)
                             .style(|theme: &Theme| container::bordered_box(theme))
                             .padding(5.0)
                             .boxed()
@@ -487,12 +555,15 @@ impl<UserMsg: Clone + 'static> Menu<'static, UserMsg> {
             menu_bar.push(Popover::new(
                 mouse_area(btn)
                     .on_enter(MenuMessage::OpenOnHover(idx))
+                    .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
+                    .on_exit(MenuMessage::StartCloseMenuTimer(idx))
                     .boxed(),
                 pop,
             )
             .gap(5.0)
             .position(Position::Bottom)
             .align(Alignment::Start)
+            .outside_close_delay(config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
             .on_close(MenuMessage::Close(idx)).boxed());
         }
         
@@ -596,6 +667,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                 .position(sub_config.position.unwrap_or(Position::Right))
                 .align(config.align.unwrap_or(Alignment::Start))
                 .gap(config.gap.unwrap_or_default())
+                .outside_close_delay(sub_config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
                 .on_close(MenuMessage::CloseSubmenu(close_path))
                 .boxed()
             }
@@ -657,6 +729,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                     .position(sub_config.position.unwrap_or(Position::Right))
                     .align(sub_config.align.unwrap_or(Alignment::Start))
                     .gap(sub_config.gap.unwrap_or_default())
+                    .outside_close_delay(sub_config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
                     .on_close(MenuMessage::CloseSubmenu(close_path))
                     .boxed()
             }
@@ -760,6 +833,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                 .position(sub_config.position.unwrap_or(Position::Right))
                 .align(sub_config.align.unwrap_or(Alignment::Start))
                 .gap(sub_config.gap.unwrap_or_default())
+                .outside_close_delay(sub_config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
                 .on_close(MenuMessage::CloseSubmenu(close_path))
                 .boxed()
             }
@@ -821,6 +895,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                     .position(sub_config.position.unwrap_or(Position::Right))
                     .align(sub_config.align.unwrap_or(Alignment::Start))
                     .gap(sub_config.gap.unwrap_or_default())
+                    .outside_close_delay(sub_config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
                     .on_close(MenuMessage::CloseSubmenu(close_path))
                     .boxed()
             }

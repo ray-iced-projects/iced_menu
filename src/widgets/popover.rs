@@ -56,6 +56,7 @@ use iced::mouse;
 use iced::touch;
 use iced::widget::Widget;
 use iced::{Alignment, Element, Event, Length, Pixels, Point, Rectangle, Size, Vector, advanced::Shell};
+use std::time::{Duration, Instant};
 
 /// A floating piece of content that appears over another element.
 ///
@@ -111,6 +112,7 @@ where
     gap: f32,
     snap_within_viewport: bool,
     on_close: Option<Message>,
+    outside_close_delay: Option<Duration>,
 }
 
 impl<'a, Message, Theme, Renderer> Popover<'a, Message, Theme, Renderer>
@@ -140,6 +142,7 @@ where
             gap: 0.0,
             snap_within_viewport: true,
             on_close: None,
+            outside_close_delay: Some(Duration::from_secs(2)),
         }
     }
 
@@ -150,6 +153,13 @@ where
     /// setting the `popover` argument to `None`.
     pub fn on_close(mut self, message: Message) -> Self {
         self.on_close = Some(message);
+        self
+    }
+
+    /// Sets how long the pointer must remain outside the popover before it
+    /// closes automatically. `None` disables the timeout.
+    pub fn outside_close_delay(mut self, delay: Duration) -> Self {
+        self.outside_close_delay = Some(delay);
         self
     }
 
@@ -361,6 +371,8 @@ where
             on_close: self.on_close.clone(),
             viewport: *viewport,
             window,
+            outside_since: None,
+            outside_close_delay: self.outside_close_delay,
         })));
 
         overlays
@@ -581,6 +593,8 @@ where
     on_close: Option<Message>,
     viewport: Rectangle,
     window: Size,
+    outside_since: Option<Instant>,
+    outside_close_delay: Option<Duration>,
 }
 
 impl<Message, Theme, Renderer> iced::advanced::overlay::Overlay<Message, Theme, Renderer>
@@ -593,6 +607,25 @@ where
         let cursor_position = cursor.position();
         let is_inside = cursor_position.is_some_and(|p| self.popup_layout.bounds().contains(p));
         let is_over_base = cursor_position.is_some_and(|p| self.content_bounds.contains(p));
+        let is_outside = cursor_position.is_some_and(|p| !self.popup_layout.bounds().contains(p) && !self.content_bounds.contains(p));
+
+        if let Some(delay) = self.outside_close_delay {
+            if is_outside {
+                let now = Instant::now();
+                if self.outside_since.is_none() {
+                    self.outside_since = Some(now);
+                }
+
+                if self.outside_since.is_some_and(|started| now.duration_since(started) >= delay) {
+                    if let Some(on_close) = self.on_close.take() {
+                        shell.publish(on_close);
+                    }
+                    return;
+                }
+            } else {
+                self.outside_since = None;
+            }
+        }
 
         if matches!(
             event,

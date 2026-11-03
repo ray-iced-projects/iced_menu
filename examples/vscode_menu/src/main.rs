@@ -6,6 +6,7 @@ use iced::widget::{self, container};
 use iced::{Alignment, Element, Task, Theme, Widget, window};
 use std::rc::Rc;
 
+
 pub fn main() -> iced::Result {
     iced::application(App::default, App::update, App::view)
         .theme(Theme::TokyoNight)
