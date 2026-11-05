@@ -18,8 +18,26 @@ Define menus using the `MenuItem` enum:
 
 ```rust
 MenuItem::Item { label: "Label", size: 14.0 }  // Regular menu item
+MenuItem::ItemWithTooltip {
+  label: "Save",
+  size: 14.0,
+  tooltip: MenuTooltip { label: "Save current file", position: iced::widget::tooltip::Position::FollowCursor }
+}  // Regular menu item with tooltip
 MenuItem::SubMenu { config: MenuConfig { label: "Submenu >", items: vec![...], ..Default::default() } }  // Submenu with children
 MenuItem::Element(Rc::new(|| widget))  // Custom widget (e.g., separator)
+```
+
+You can also attach tooltips to submenu triggers through `MenuConfig`:
+
+```rust
+MenuConfig {
+  label: "File",
+  tooltip: Some(MenuTooltip {
+    label: "File actions",
+    position: iced::widget::tooltip::Position::Bottom,
+  }),
+  ..Default::default()
+}
 ```
 ## Example - vscode_menu
 This example shows a more advance menu which copied the behavior of the VsCode menu.  Only the "File" and "Edit" were completed but it will allow one to see how the construct was done which is not that more complex than the simple menu.

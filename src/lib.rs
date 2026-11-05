@@ -47,6 +47,7 @@
 //! # Menu Items
 //!
 //! - **`Item`**: Simple text label with press handling
+//! - **`ItemWithTooltip`**: Text item with a tooltip
 //! - **`SubMenu`**: Dropdown with children, uses default label rendering
 //! - **`SubElement`**: Dropdown with custom trigger content (for complex layouts)
 //! - **`Element`**: Arbitrary widget (separators, checkboxes, custom layouts)
@@ -57,8 +58,9 @@
 //! The menu handles all hover timing, submenu open/close logic internally.
 //!
 
-use iced::widget::{button, column, container, mouse_area, row, scrollable, text};
+use iced::widget::{button, column, container, mouse_area, row, scrollable, text, tooltip};
 use iced::{Alignment, Element, Task, Theme, Widget};
+use iced::widget::tooltip::Position as TooltipPosition;
 use std::time::{Duration, Instant};
 use std::rc::Rc;
 
@@ -77,6 +79,7 @@ use crate::widgets::popover::{Popover, Position};
 /// - `gap`: Optional spacing between trigger and popover
 /// - `position`: Where the popover opens (Right, Left, Top, Bottom)
 /// - `align`: Vertical/horizontal alignment of popover content
+/// - `tooltip`: Optional tooltip shown when hovering the trigger item
 ///
 /// # Example
 /// ```ignore
@@ -97,6 +100,7 @@ pub struct MenuConfig<'a, UserMsg = ()> {
     pub spacing: f32,
     pub position: Option<Position>,
     pub align: Option<Alignment>,
+    pub tooltip: Option<MenuTooltip<'a>>,
     pub scrollable_height: Option<f32>,
     pub outside_close_delay: Option<Duration>,
 }
@@ -113,6 +117,7 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
             spacing: 0.0,
             position: None,
             align: None,
+            tooltip: None,
             scrollable_height: None,
             outside_close_delay: Some(Duration::from_secs(1)),
         }
@@ -127,6 +132,15 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
 /// - **`Item`**: A clickable menu entry with label and font size
 ///   ```ignore
 ///   MenuItem::Item { label: "Save", size: 14.0 }
+///   ```
+///
+/// - **`ItemWithTooltip`**: A clickable menu entry with a tooltip
+///   ```ignore
+///   MenuItem::ItemWithTooltip {
+///       label: "Save",
+///       size: 14.0,
+///       tooltip: MenuTooltip { label: "Save current file", position: iced::widget::tooltip::Position::FollowCursor },
+///   }
 ///   ```
 ///
 /// - **`SubMenu`**: A dropdown trigger with automatic label rendering
@@ -155,6 +169,8 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
 ///   ```
 pub enum MenuItem<'a, UserMsg = ()> {
     Item{label: &'a str, size: f32},
+    /// A clickable menu entry with label, font size, and a tooltip.
+    ItemWithTooltip { label: &'a str, size: f32, tooltip: MenuTooltip<'a> },
     SubMenu {
         config: MenuConfig<'a, UserMsg>,
     },
@@ -165,6 +181,45 @@ pub enum MenuItem<'a, UserMsg = ()> {
         config: MenuConfig<'a, UserMsg>,
     },
     Element(Rc<dyn Fn() -> Element<'a, MenuMessage<UserMsg>> + 'a>),
+}
+
+#[derive(Debug, Clone, Copy)]
+/// Tooltip configuration for a menu item.
+pub struct MenuTooltip<'a> {
+    pub label: &'a str,
+    pub position: TooltipPosition,
+}
+
+fn wrap_with_tooltip<'a, UserMsg: Clone + 'a>(
+    content: Element<'a, MenuMessage<UserMsg>>,
+    tooltip_config: Option<MenuTooltip<'a>>,
+) -> Element<'a, MenuMessage<UserMsg>> {
+    match tooltip_config {
+        Some(config) => tooltip(
+            content,
+            container(text(config.label))
+                .padding(8.0)
+                .style(subtle_tooltip_style),
+            config.position,
+        )
+        .boxed(),
+        None => content,
+    }
+}
+
+fn subtle_tooltip_style(theme: &Theme) -> iced::widget::container::Style {
+    let palette = theme.palette();
+
+    iced::widget::container::Style {
+        background: Some(palette.background.weakest.color.into()),
+        text_color: Some(palette.background.weakest.text),
+        border: iced::Border {
+            width: 1.0,
+            radius: 5.0.into(),
+            color: palette.background.weak.color,
+        },
+        ..iced::widget::container::Style::default()
+    }
 }
 
 
@@ -500,13 +555,15 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                             button::text(theme, status)
                         )   
                     .boxed();
+
+            let btn_with_mouse = mouse_area(btn)
+                .on_enter(MenuMessage::OpenOnHover(idx))
+                .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
+                .on_exit(MenuMessage::StartCloseMenuTimer(idx))
+                .boxed();
             
             menu_bar.push(Popover::new(
-                mouse_area(btn)
-                    .on_enter(MenuMessage::OpenOnHover(idx))
-                    .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
-                    .on_exit(MenuMessage::StartCloseMenuTimer(idx))
-                    .boxed(),
+                wrap_with_tooltip(btn_with_mouse, config.tooltip),
                 pop,
             )
             .gap(5.0)
@@ -551,13 +608,15 @@ impl<UserMsg: Clone + 'static> Menu<'static, UserMsg> {
                             button::text(theme, status)
                         )   
                     .boxed();
+
+            let btn_with_mouse = mouse_area(btn)
+                .on_enter(MenuMessage::OpenOnHover(idx))
+                .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
+                .on_exit(MenuMessage::StartCloseMenuTimer(idx))
+                .boxed();
             
             menu_bar.push(Popover::new(
-                mouse_area(btn)
-                    .on_enter(MenuMessage::OpenOnHover(idx))
-                    .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
-                    .on_exit(MenuMessage::StartCloseMenuTimer(idx))
-                    .boxed(),
+                wrap_with_tooltip(btn_with_mouse, config.tooltip),
                 pop,
             )
             .gap(5.0)
@@ -583,12 +642,28 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
             MenuItem::Item {label, size} => {
                 let lbl = 
                     text(*label).size(*size).boxed();
-                button(lbl)
-                    .width(iced::Length::Fill)
-                    .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
-                    .style(|theme, status|
-                        button::text(theme, status))
-                    .boxed()
+                wrap_with_tooltip(
+                    button(lbl)
+                        .width(iced::Length::Fill)
+                        .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
+                        .style(|theme, status|
+                            button::text(theme, status))
+                        .boxed(),
+                    None,
+                )
+            }
+            MenuItem::ItemWithTooltip { label, size, tooltip: tooltip_config } => {
+                let lbl =
+                    text(*label).size(*size).boxed();
+                wrap_with_tooltip(
+                    button(lbl)
+                        .width(iced::Length::Fill)
+                        .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
+                        .style(|theme, status|
+                            button::text(theme, status))
+                        .boxed(),
+                    Some(*tooltip_config),
+                )
             }
             MenuItem::Element(f) => f(),
             MenuItem::SubMenu { config: sub_config } => {
@@ -660,10 +735,9 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                         .boxed()
                 };
                 
-                Popover::new(
-                    btn_with_mouse,
-                    submenu_content,
-                )
+                let trigger = wrap_with_tooltip(btn_with_mouse, sub_config.tooltip);
+
+                Popover::new(trigger, submenu_content)
                 .position(sub_config.position.unwrap_or(Position::Right))
                 .align(config.align.unwrap_or(Alignment::Start))
                 .gap(config.gap.unwrap_or_default())
@@ -725,7 +799,9 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                         .boxed()
                 };
 
-                Popover::new(btn_with_mouse, submenu_content)
+                let trigger = wrap_with_tooltip(btn_with_mouse, sub_config.tooltip);
+
+                Popover::new(trigger, submenu_content)
                     .position(sub_config.position.unwrap_or(Position::Right))
                     .align(sub_config.align.unwrap_or(Alignment::Start))
                     .gap(sub_config.gap.unwrap_or_default())
@@ -753,12 +829,28 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
             MenuItem::Item{label, size} => {
                 let lbl = 
                     text(*label).size(*size).boxed();
-                button(lbl)
-                    .width(iced::Length::Fill)
-                    .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
-                    .style(|theme, status|
-                        button::text(theme, status))
-                    .boxed()
+                wrap_with_tooltip(
+                    button(lbl)
+                        .width(iced::Length::Fill)
+                        .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
+                        .style(|theme, status|
+                            button::text(theme, status))
+                        .boxed(),
+                    None,
+                )
+            }
+            MenuItem::ItemWithTooltip { label, size, tooltip: tooltip_config } => {
+                let lbl =
+                    text(*label).size(*size).boxed();
+                wrap_with_tooltip(
+                    button(lbl)
+                        .width(iced::Length::Fill)
+                        .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
+                        .style(|theme, status|
+                            button::text(theme, status))
+                        .boxed(),
+                    Some(*tooltip_config),
+                )
             }
             MenuItem::Element(f) => f(),
             MenuItem::SubMenu { config: sub_config } => {
@@ -826,10 +918,9 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                         .boxed()
                 };
                 
-                Popover::new(
-                    btn_with_mouse,
-                    submenu_content,
-                )
+                let trigger = wrap_with_tooltip(btn_with_mouse, sub_config.tooltip);
+
+                Popover::new(trigger, submenu_content)
                 .position(sub_config.position.unwrap_or(Position::Right))
                 .align(sub_config.align.unwrap_or(Alignment::Start))
                 .gap(sub_config.gap.unwrap_or_default())
@@ -891,7 +982,9 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                         .boxed()
                 };
 
-                Popover::new(btn_with_mouse, submenu_content)
+                let trigger = wrap_with_tooltip(btn_with_mouse, sub_config.tooltip);
+
+                Popover::new(trigger, submenu_content)
                     .position(sub_config.position.unwrap_or(Position::Right))
                     .align(sub_config.align.unwrap_or(Alignment::Start))
                     .gap(sub_config.gap.unwrap_or_default())
