@@ -91,7 +91,6 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
     vec![        
         MenuConfig {
             label: "File",
-            width: 250.0,
             items: vec![
                 MenuItem::Item {
                     label: "New File", size},
@@ -100,14 +99,12 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::SubMenu {
                     config: MenuConfig {
                         label: "New Window with Profile >",
-                        width: 200.0,
                         items: vec![
                             MenuItem::Item { label: "Profile 1", size },
                             MenuItem::Item { label: "Profile 2", size },
                             MenuItem::SubMenu {
                                 config: MenuConfig {
                                     label: "Additional Profiles >",
-                                    width: 100.0,
                                     items: vec![
                                         MenuItem::Item {
                                             label: "Profile 3",
@@ -133,7 +130,6 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::SubMenu {
                     config: MenuConfig {
                         label: "Open Recent >",
-                        width: 240.0,
                         items: vec![
                             MenuItem::Item {
                                 label: "~/document/iced_menu", size },
@@ -152,7 +148,6 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
         },
         MenuConfig {
             label: "Edit",
-            width: 200.0,
             gap: None,
             items: vec![
                 MenuItem::Item { label: "Undo", size },
@@ -163,7 +158,6 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::SubMenu {
                     config: MenuConfig {
                         label: "Find >",
-                        width: 150.0,
                         items: vec![
                             MenuItem::Item { label: "Find", size },
                             MenuItem::Item { label: "Find Next", size },
@@ -181,7 +175,6 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
         },
         MenuConfig {
             label: "Functions",
-            width: 150.0,
             scrollable_height: Some(300.0),
             items: functions()
                 .into_iter()

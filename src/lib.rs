@@ -75,7 +75,7 @@ use crate::widgets::popover::{Popover, Position};
 /// - `label`: The text shown on the menu button
 /// - `label_size`: Font size for the label
 /// - `items`: Vec of menu items (can include submenus)
-/// - `width`: Fixed width of the dropdown
+/// - `width`: Width of the dropdown (supports Shrink, Fixed, Fill, etc.)
 /// - `gap`: Optional spacing between trigger and popover
 /// - `position`: Where the popover opens (Right, Left, Top, Bottom)
 /// - `align`: Vertical/horizontal alignment of popover content
@@ -86,7 +86,7 @@ use crate::widgets::popover::{Popover, Position};
 /// MenuConfig {
 ///     label: "File",
 ///     label_size: 14.0,
-///     width: 250.0,
+///     width: iced::Length::Fixed(250.0),
 ///     items: vec![...],
 ///     ..Default::default()
 /// }
@@ -95,7 +95,7 @@ pub struct MenuConfig<'a, UserMsg = ()> {
     pub label: &'a str,
     pub label_size: f32,
     pub items: Vec<MenuItem<'a, UserMsg>>,
-    pub width: f32,
+    pub width: iced::Length,
     pub gap: Option<f32>,
     pub spacing: f32,
     pub position: Option<Position>,
@@ -112,7 +112,7 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
             label: "",
             label_size: 14.0,
             items: Vec::new(),
-            width: 200.0,
+            width: iced::Length::Shrink,
             gap: None,
             spacing: 0.0,
             position: None,
@@ -644,7 +644,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                     text(*label).size(*size).boxed();
                 wrap_with_tooltip(
                     button(lbl)
-                        .width(iced::Length::Fill)
+                        .width(iced::Length::Shrink)
                         .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
                         .style(|theme, status|
                             button::text(theme, status))
@@ -657,7 +657,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                     text(*label).size(*size).boxed();
                 wrap_with_tooltip(
                     button(lbl)
-                        .width(iced::Length::Fill)
+                        .width(iced::Length::Shrink)
                         .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
                         .style(|theme, status|
                             button::text(theme, status))
@@ -694,7 +694,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                     
                     let styled_content = 
                         container(with_mouse_area)
-                        .width(iced::Length::Fixed(sub_config.width))
+                        .width(sub_config.width)
                         .style(|theme: &Theme| container::bordered_box(theme))
                         .padding(5.0)
                         .boxed();
@@ -716,7 +716,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                     .boxed();
                 let btn = 
                     button(label)
-                    .width(iced::Length::Fill)
+                    .width(iced::Length::Shrink)
                     .on_press(MenuMessage::ToggleSubmenu(toggle_path))
                     .style(|theme, status| button::text(theme, status))
                     .boxed();
@@ -767,7 +767,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                         .on_enter(MenuMessage::CancelCloseSubmenuTimer(enter_path))
                         .boxed();
                     Some(container(with_mouse_area)
-                        .width(iced::Length::Fixed(sub_config.width))
+                        .width(sub_config.width)
                         .style(|theme: &Theme| container::bordered_box(theme))
                         .padding(5.0)
                         .boxed())
@@ -782,7 +782,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                 let close_path = submenu_path;
 
                 let btn = button(content())
-                    .width(iced::Length::Fill)
+                    .width(iced::Length::Shrink)
                     .on_press(MenuMessage::ToggleSubmenu(toggle_path))
                     .style(|theme, status| button::text(theme, status))
                     .boxed();
@@ -813,7 +813,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
     }).collect();
 
     container(column(buttons).spacing(config.spacing))
-        .width(iced::Length::Fixed(config.width))
+        .width(config.width)
         .boxed()
 }
 
@@ -831,7 +831,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                     text(*label).size(*size).boxed();
                 wrap_with_tooltip(
                     button(lbl)
-                        .width(iced::Length::Fill)
+                        .width(iced::Length::Shrink)
                         .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
                         .style(|theme, status|
                             button::text(theme, status))
@@ -844,7 +844,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                     text(*label).size(*size).boxed();
                 wrap_with_tooltip(
                     button(lbl)
-                        .width(iced::Length::Fill)
+                        .width(iced::Length::Shrink)
                         .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
                         .style(|theme, status|
                             button::text(theme, status))
@@ -879,7 +879,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                     
                     let styled_content = 
                         container(with_mouse_area)
-                        .width(iced::Length::Fixed(sub_config.width))
+                        .width(sub_config.width)
                         .style(|theme: &Theme| container::bordered_box(theme))
                         .padding(5.0)
                         .boxed();
@@ -901,7 +901,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                     .boxed();
                 let btn = 
                     button(label)
-                    .width(iced::Length::Fill)
+                    .width(iced::Length::Shrink)
                     .on_press(MenuMessage::ToggleSubmenu(toggle_path))
                     .style(|theme, status| button::text(theme, status))
                     .boxed();
@@ -950,7 +950,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                         .on_enter(MenuMessage::CancelCloseSubmenuTimer(enter_path))
                         .boxed();
                     Some(container(with_mouse_area)
-                        .width(iced::Length::Fixed(sub_config.width))
+                        .width(sub_config.width)
                         .style(|theme: &Theme| container::bordered_box(theme))
                         .padding(5.0)
                         .boxed())
@@ -965,7 +965,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                 let close_path = submenu_path;
 
                 let btn = button(content())
-                    .width(iced::Length::Fill)
+                    .width(iced::Length::Shrink)
                     .on_press(MenuMessage::ToggleSubmenu(toggle_path))
                     .style(|theme, status| button::text(theme, status))
                     .boxed();
@@ -996,7 +996,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
     }).collect();
 
     let cont = container(column(buttons).spacing(config.spacing))
-        .width(iced::Length::Fixed(config.width))
+        .width(config.width)
         .boxed();
 
     if let Some(h) = config.scrollable_height {

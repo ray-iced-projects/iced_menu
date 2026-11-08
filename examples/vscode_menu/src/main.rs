@@ -1,9 +1,8 @@
 
-use iced::Length::Fill;
+use iced::{Length, Alignment, Element, Task, Theme, Widget, window};
 use iced::alignment::Vertical;
 use iced_menu::{Menu, MenuMessage, MenuConfig, MenuItem};
 use iced::widget::{self, container};
-use iced::{Alignment, Element, Task, Theme, Widget, window};
 use std::rc::Rc;
 
 
@@ -100,7 +99,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
         MenuConfig {
             label: "File",
             label_size,
-            width: 300.0,
+            width: iced::Length::Fixed(300.0),
             items: vec![
                 MenuItem::Element(
                     Rc::new(
@@ -114,14 +113,14 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::SubElement {
                     content: Rc::new(sub_menu_row("New Window with Profile")),
                     config: MenuConfig {
-                        width: 200.0,
+                        width: iced::Length::Fixed(200.0),
                         items: vec![
                             MenuItem::Item { label: "Profile 1", size },
                             MenuItem::Item { label: "Profile 2", size },
                             MenuItem::SubMenu {
                                 config: MenuConfig {
                                     label: "Additional Profiles >",
-                                    width: 100.0,
+                                    width: iced::Length::Fixed(100.0),
                                     label_size,
                                     items: vec![
                                         MenuItem::Item { label: "Profile 3", size },
@@ -149,7 +148,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::SubElement {
                     content: Rc::new(sub_menu_row("Open Recent")),
                     config: MenuConfig {
-                        width: 240.0,
+                        width: iced::Length::Fixed(240.0),
                         items: vec![
                             MenuItem::Item { label: "~/document/iced_menu", size },
                         ],
@@ -171,7 +170,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::SubElement {
                     content: Rc::new(sub_menu_row("Share")),
                     config: MenuConfig {
-                        width: 240.0,
+                        width: iced::Length::Fixed(240.0),
                         items: vec![
                             MenuItem::Item { label: "Copy vscode.dec Link", size },
                             MenuItem::Element(Rc::new(separator())),
@@ -186,7 +185,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::SubElement {
                     content: Rc::new(sub_menu_row("Preferences")),
                     config: MenuConfig {
-                        width: 300.0,
+                        width: iced::Length::Fixed(300.0),
                         items: vec![
                             MenuItem::Element(Rc::new(
                                 menu_row(None, "Profiles".to_string(), None, None ))),
@@ -217,7 +216,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
         },
         MenuConfig {
             label: "Edit",
-            width: 350.0,
+            width: iced::Length::Fixed(350.0),
             gap: None,
             items: vec![
                 MenuItem::Element(Rc::new(
@@ -232,7 +231,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::SubElement {
                     content: Rc::new(sub_menu_row("Copy as")),
                     config: MenuConfig {
-                        width: 250.0,
+                        width: iced::Length::Fixed(250.0),
                         items: vec![
                             MenuItem::Item { label: "Copy Remote File URL", size },
                             MenuItem::Item { label: "Copy Remote File URL from...", size },
@@ -263,37 +262,37 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
         MenuConfig {
             label: "Selection",
             label_size,
-            width: 0.0,
+            width: iced::Length::Fixed(0.0),
             ..Default::default()
         },
         MenuConfig {
             label: "View",
             label_size,
-            width: 0.0,
+            width: iced::Length::Fixed(0.0),
             ..Default::default()
         },
         MenuConfig {
             label: "Go",
             label_size,
-            width: 0.0,
+            width: iced::Length::Fixed(0.0),
             ..Default::default()
         },
         MenuConfig {
             label: "Run",
             label_size,
-            width: 0.0,
+            width: iced::Length::Fixed(0.0),
             ..Default::default()
         },
         MenuConfig {
             label: "Terminal",
             label_size,
-            width: 0.0,
+            width: iced::Length::Fixed(0.0),
             ..Default::default()
         },
         MenuConfig {
             label: "Help",
             label_size,
-            width: 0.0,
+            width: iced::Length::Fixed(0.0),
             ..Default::default()
         },
     ]
@@ -325,7 +324,7 @@ fn menu_row(
         let lbl = 
             widget::text(label.clone())
             .size(size)
-            .width(Fill)
+            .width(Length::Fill)
             .boxed();
 
         let ctrl = 
@@ -333,7 +332,7 @@ fn menu_row(
             widget::text(keys.clone().unwrap())
             .size(size)
             .align_x(Alignment::End)
-            .width(Fill)
+            .width(Length::Fill)
             .boxed()
         } else {
             widget::space().boxed()
@@ -353,7 +352,7 @@ fn menu_row(
     let rw_btn = 
         widget::row(vec![lbl, ctrl, arr])
         .align_y(Vertical::Center)
-        .width(Fill)
+        .width(Length::Fill)
         .boxed();
 
     let btn = 
@@ -362,14 +361,14 @@ fn menu_row(
             .padding(0.0)
             .style(move|theme, status| 
                 widget::button::text(theme, status))
-            .width(Fill)
+            .width(Length::Fill)
             .boxed();
 
     let rw = 
         widget::row(vec![chk, btn])
         .spacing(10.0)
         .align_y(Vertical::Center)
-        .width(Fill)
+        .width(Length::Fill)
         .boxed();
 
     rw
@@ -383,11 +382,11 @@ fn sub_menu_row(label: &'static str) -> impl Fn() -> Element<'static, MenuMessag
     move || {
         let size = 14.0;
         let spc = widget::space().width(20.0).boxed();
-        let lbl = widget::text(label).size(size).width(Fill).boxed();
+        let lbl = widget::text(label).size(size).width(Length::Fill).boxed();
         let arr = widget::text(">").size(size).align_x(Alignment::End).width(25.0).boxed();
         widget::row(vec![spc, lbl, arr])
             .align_y(Vertical::Center)
-            .width(Fill)
+            .width(Length::Fill)
             .boxed()
     }
 }
