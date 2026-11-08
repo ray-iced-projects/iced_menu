@@ -408,6 +408,13 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                 let path_clone = path.clone();
                 self.pending_submenu = Some(path.clone());
                 self.pending_timer = Some(Instant::now());
+
+                if let Some(root_idx) = path.first().copied() {
+                    if self.pending_menu_close == Some(root_idx) {
+                        self.pending_menu_close = None;
+                        self.menu_close_timer = None;
+                    }
+                }
                 
                 // Cancel any pending close timer for the currently open submenu
                 // This prevents parent from closing when entering a child submenu
@@ -484,6 +491,13 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                         (pending.len() > path.len() && pending[0..path.len()] == path[..]) {
                         self.pending_close = None;
                         self.close_timer = None;
+                    }
+                }
+
+                if let Some(root_idx) = path.first().copied() {
+                    if self.pending_menu_close == Some(root_idx) {
+                        self.pending_menu_close = None;
+                        self.menu_close_timer = None;
                     }
                 }
                 Task::none()
