@@ -1,5 +1,5 @@
 
-use iced_menu::{Menu, MenuMessage, MenuConfig, MenuItem, MenuTooltip};
+use iced_menu::{Menu, MenuMessage, MenuConfig, MenuItem, MenuTooltip, Item};
 use iced::widget::container;
 use iced::{Element, Task, Theme, Widget, window};
 use std::rc::Rc;
@@ -92,29 +92,21 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
         MenuConfig {
             label: "File",
             items: vec![
-                MenuItem::Item {
-                    label: "New File", size},
-                MenuItem::Item {
-                    label:"New Window", size},
+                MenuItem::Item(Item::new("New File").size(size)),
+                MenuItem::Item(Item::new("New Window").size(size)),
                 MenuItem::SubMenu {
                     config: MenuConfig {
                         label: "New Window with Profile >",
                         items: vec![
-                            MenuItem::Item { label: "Profile 1", size },
-                            MenuItem::Item { label: "Profile 2", size },
+                            MenuItem::Item(Item::new("Profile 1").size(size)),
+                            MenuItem::Item(Item::new("Profile 2").size(size)),
                             MenuItem::SubMenu {
                                 config: MenuConfig {
                                     label: "Additional Profiles >",
                                     items: vec![
-                                        MenuItem::Item {
-                                            label: "Profile 3",
-                                            size },
-                                        MenuItem::Item {
-                                            label: "Profile 4",
-                                            size },
-                                        MenuItem::Item {
-                                            label: "Profile 5",
-                                            size },
+                                        MenuItem::Item(Item::new("Profile 3").size(size)),
+                                        MenuItem::Item(Item::new("Profile 4").size(size)),
+                                        MenuItem::Item(Item::new("Profile 5").size(size)),
                                     ],
                                     ..Default::default()
                                 },
@@ -124,25 +116,24 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     },
                 },
                 MenuItem::Element(Rc::new(separator())),
-                MenuItem::Item { label: "Open File", size },
-                MenuItem::Item { label: "Open Folder", size },
-                MenuItem::Item { label: "Open Wokspace from File", size },
+                MenuItem::Item(Item::new("Open File").size(size)),
+                MenuItem::Item(Item::new("Open Folder").size(size)),
+                MenuItem::Item(Item::new("Open Wokspace from File").size(size)),
                 MenuItem::SubMenu {
                     config: MenuConfig {
                         label: "Open Recent >",
                         items: vec![
-                            MenuItem::Item {
-                                label: "~/document/iced_menu", size },
+                            MenuItem::Item(Item::new("~/document/iced_menu").size(size)),
                         ],
                         ..Default::default()
                     },
                 },
                 MenuItem::Element(Rc::new(separator())),
-                MenuItem::Item { label: "Save", size },
-                MenuItem::Item { label: "Save As...", size },
-                MenuItem::Item { label: "Save All", size },
-                MenuItem::Item { label: "Revert File", size },
-                MenuItem::Item { label: "Exit", size },
+                MenuItem::Item(Item::new("Save").size(size)),
+                MenuItem::Item(Item::new("Save As...").size(size)),
+                MenuItem::Item(Item::new("Save All").size(size)),
+                MenuItem::Item(Item::new("Revert File").size(size)),
+                MenuItem::Item(Item::new("Exit").size(size)),
             ],
             ..Default::default()
         },
@@ -150,25 +141,25 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
             label: "Edit",
             gap: None,
             items: vec![
-                MenuItem::Item { label: "Undo", size },
-                MenuItem::Item { label: "Redo", size },
-                MenuItem::Item { label: "Cut", size },
-                MenuItem::Item { label: "Copy", size },
-                MenuItem::Item { label: "Paste", size },
+                MenuItem::Item(Item::new("Undo").size(size)),
+                MenuItem::Item(Item::new("Redo").size(size)),
+                MenuItem::Item(Item::new("Cut").size(size)),
+                MenuItem::Item(Item::new("Copy").size(size)),
+                MenuItem::Item(Item::new("Paste").size(size)),
                 MenuItem::SubMenu {
                     config: MenuConfig {
                         label: "Find >",
                         items: vec![
-                            MenuItem::Item { label: "Find", size },
-                            MenuItem::Item { label: "Find Next", size },
-                            MenuItem::Item { label: "Find Previous", size },
+                            MenuItem::Item(Item::new("Find").size(size)),
+                            MenuItem::Item(Item::new("Find Next").size(size)),
+                            MenuItem::Item(Item::new("Find Previous").size(size)),
                         ],
                         ..Default::default()
                     },
                 },
-                MenuItem::Item { label: "Replace", size },
-                MenuItem::Item { label: "Find in Files", size },
-                MenuItem::Item { label: "Replace in Files", size },
+                MenuItem::Item(Item::new("Replace").size(size)),
+                MenuItem::Item(Item::new("Find in Files").size(size)),
+                MenuItem::Item(Item::new("Replace in Files").size(size)),
                 MenuItem::Element(Rc::new(dark_mode_toggle(state.is_dark_mode))),
             ],
             ..Default::default()
@@ -182,14 +173,10 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     let tooltip_label: &'static str =
                         Box::leak(format!("{signature}\n{description}").into_boxed_str());
 
-                    MenuItem::ItemWithTooltip {
-                        label: name,
-                        size,
-                        tooltip: MenuTooltip {
-                            label: tooltip_label,
-                            position: iced::widget::tooltip::Position::Right,
-                        },
-                    }
+                    MenuItem::Item(Item::new(name).size(size).tooltip(MenuTooltip {
+                        label: tooltip_label,
+                        position: iced::widget::tooltip::Position::Right,
+                    }))
                 })
                 .collect(),
             ..Default::default()

@@ -59,7 +59,7 @@
 //!
 
 use iced::widget::{button, column, container, mouse_area, row, scrollable, text, tooltip};
-use iced::{Alignment, Element, Task, Theme, Widget};
+use iced::{Alignment, Element, Padding, Task, Theme, Widget};
 use iced::widget::tooltip::Position as TooltipPosition;
 use std::time::{Duration, Instant};
 use std::rc::Rc;
@@ -103,6 +103,7 @@ pub struct MenuConfig<'a, UserMsg = ()> {
     pub tooltip: Option<MenuTooltip<'a>>,
     pub scrollable_height: Option<f32>,
     pub outside_close_delay: Option<Duration>,
+    pub padding: Padding,
 }
 
 // Manual Default so UserMsg: Default is never required
@@ -120,6 +121,7 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
             tooltip: None,
             scrollable_height: None,
             outside_close_delay: Some(Duration::from_secs(1)),
+            padding: Padding::new(0.0),
         }
     }
 }
@@ -168,9 +170,7 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
 ///   MenuItem::Element(Rc::new(|| iced::widget::rule::horizontal(2.0).boxed()))
 ///   ```
 pub enum MenuItem<'a, UserMsg = ()> {
-    Item{label: &'a str, size: f32},
-    /// A clickable menu entry with label, font size, and a tooltip.
-    ItemWithTooltip { label: &'a str, size: f32, tooltip: MenuTooltip<'a> },
+    Item(Item<'a>),
     SubMenu {
         config: MenuConfig<'a, UserMsg>,
     },
@@ -181,6 +181,71 @@ pub enum MenuItem<'a, UserMsg = ()> {
         config: MenuConfig<'a, UserMsg>,
     },
     Element(Rc<dyn Fn() -> Element<'a, MenuMessage<UserMsg>> + 'a>),
+}
+
+/// Builder for menu items with sensible defaults.
+///
+/// Provides zero padding by default (unlike iced's button default).
+/// Use builder methods to customize size, padding, and optional tooltip.
+///
+/// # Example
+/// ```ignore
+/// vec![
+///     Item::new("Save").size(14.0),
+///     Item::new("Copy").padding(5.0),
+///     Item::new("Help").tooltip(MenuTooltip { label: "Get help", position: ... }),
+/// ]
+/// ```
+#[derive(Debug, Clone, Copy)]
+pub struct Item<'a> {
+    pub label: &'a str,
+    pub size: f32,
+    pub padding: Padding,
+    pub tooltip: Option<MenuTooltip<'a>>,
+}
+
+impl<'a> Item<'a> {
+    /// Create a new menu item with just a label.
+    ///
+    /// Defaults: size=12.0, padding=0.0, tooltip=None
+    pub fn new(label: &'a str) -> Self {
+        Self {
+            label,
+            size: 12.0,
+            padding: Padding::new(0.0),
+            tooltip: None,
+        }
+    }
+
+    /// Set the font size.
+    pub fn size(mut self, size: f32) -> Self {
+        self.size = size;
+        self
+    }
+
+    /// Set the padding using any type that converts to Padding.
+    ///
+    /// Accepts:
+    /// - `f32`: uniform padding on all sides
+    /// - `(f32, f32)`: (vertical, horizontal)
+    /// - `(f32, f32, f32, f32)`: (top, right, bottom, left)
+    /// - `Padding`: explicit
+    pub fn padding<P: Into<Padding>>(mut self, padding: P) -> Self {
+        self.padding = padding.into();
+        self
+    }
+
+    /// Set an optional tooltip.
+    pub fn tooltip(mut self, tooltip: MenuTooltip<'a>) -> Self {
+        self.tooltip = Some(tooltip);
+        self
+    }
+}
+
+impl<'a> From<Item<'a>> for MenuItem<'a> {
+    fn from(item: Item<'a>) -> Self {
+        MenuItem::Item(item)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -564,6 +629,7 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
             } else { None };
             
             let btn = button(text(config.label))
+                    .padding(config.padding)
                     .on_press(MenuMessage::Close(idx))
                     .style(move|theme, status|
                             button::text(theme, status)
@@ -653,30 +719,18 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
 ) -> Element<'a, MenuMessage<UserMsg>> {
     let buttons: Vec<Element<'a, MenuMessage<UserMsg>>> = config.items.iter().enumerate().map(|(idx, item)| {
         match item {
-            MenuItem::Item {label, size} => {
+            MenuItem::Item(item_data) => {
                 let lbl = 
-                    text(*label).size(*size).boxed();
+                    text(item_data.label).size(item_data.size).boxed();
                 wrap_with_tooltip(
                     button(lbl)
                         .width(iced::Length::Shrink)
-                        .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
+                        .padding(item_data.padding)
+                        .on_press(MenuMessage::ItemPressed(item_data.label.to_string(), Some(menubar_index)))
                         .style(|theme, status|
                             button::text(theme, status))
                         .boxed(),
-                    None,
-                )
-            }
-            MenuItem::ItemWithTooltip { label, size, tooltip: tooltip_config } => {
-                let lbl =
-                    text(*label).size(*size).boxed();
-                wrap_with_tooltip(
-                    button(lbl)
-                        .width(iced::Length::Shrink)
-                        .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
-                        .style(|theme, status|
-                            button::text(theme, status))
-                        .boxed(),
-                    Some(*tooltip_config),
+                    item_data.tooltip,
                 )
             }
             MenuItem::Element(f) => f(),
@@ -731,6 +785,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
                 let btn = 
                     button(label)
                     .width(iced::Length::Shrink)
+                    .padding(sub_config.padding)
                     .on_press(MenuMessage::ToggleSubmenu(toggle_path))
                     .style(|theme, status| button::text(theme, status))
                     .boxed();
@@ -797,6 +852,7 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
 
                 let btn = button(content())
                     .width(iced::Length::Shrink)
+                    .padding(sub_config.padding)
                     .on_press(MenuMessage::ToggleSubmenu(toggle_path))
                     .style(|theme, status| button::text(theme, status))
                     .boxed();
@@ -840,30 +896,18 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
 ) -> Element<'static, MenuMessage<UserMsg>> {
     let buttons: Vec<Element<'static, MenuMessage<UserMsg>>> = config.items.iter().enumerate().map(|(idx, item)| {
         match item {
-            MenuItem::Item{label, size} => {
+            MenuItem::Item(item_data) => {
                 let lbl = 
-                    text(*label).size(*size).boxed();
+                    text(item_data.label).size(item_data.size).boxed();
                 wrap_with_tooltip(
                     button(lbl)
                         .width(iced::Length::Shrink)
-                        .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
+                        .padding(item_data.padding)
+                        .on_press(MenuMessage::ItemPressed(item_data.label.to_string(), Some(menubar_index)))
                         .style(|theme, status|
                             button::text(theme, status))
                         .boxed(),
-                    None,
-                )
-            }
-            MenuItem::ItemWithTooltip { label, size, tooltip: tooltip_config } => {
-                let lbl =
-                    text(*label).size(*size).boxed();
-                wrap_with_tooltip(
-                    button(lbl)
-                        .width(iced::Length::Shrink)
-                        .on_press(MenuMessage::ItemPressed(label.to_string(), Some(menubar_index)))
-                        .style(|theme, status|
-                            button::text(theme, status))
-                        .boxed(),
-                    Some(*tooltip_config),
+                    item_data.tooltip,
                 )
             }
             MenuItem::Element(f) => f(),
@@ -916,6 +960,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                 let btn = 
                     button(label)
                     .width(iced::Length::Shrink)
+                    .padding(sub_config.padding)
                     .on_press(MenuMessage::ToggleSubmenu(toggle_path))
                     .style(|theme, status| button::text(theme, status))
                     .boxed();
@@ -980,6 +1025,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
 
                 let btn = button(content())
                     .width(iced::Length::Shrink)
+                    .padding(sub_config.padding)
                     .on_press(MenuMessage::ToggleSubmenu(toggle_path))
                     .style(|theme, status| button::text(theme, status))
                     .boxed();

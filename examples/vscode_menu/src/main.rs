@@ -1,7 +1,7 @@
 
 use iced::{Length, Alignment, Element, Task, Theme, Widget, window};
 use iced::alignment::Vertical;
-use iced_menu::{Menu, MenuMessage, MenuConfig, MenuItem};
+use iced_menu::{Menu, MenuMessage, MenuConfig, MenuItem, Item};
 use iced::widget::{self, container};
 use std::rc::Rc;
 
@@ -115,17 +115,17 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     config: MenuConfig {
                         width: iced::Length::Fixed(200.0),
                         items: vec![
-                            MenuItem::Item { label: "Profile 1", size },
-                            MenuItem::Item { label: "Profile 2", size },
+                            MenuItem::Item(Item::new("Profile 1").size(size)),
+                            MenuItem::Item(Item::new("Profile 2").size(size)),
                             MenuItem::SubMenu {
                                 config: MenuConfig {
                                     label: "Additional Profiles >",
                                     width: iced::Length::Fixed(100.0),
                                     label_size,
                                     items: vec![
-                                        MenuItem::Item { label: "Profile 3", size },
-                                        MenuItem::Item { label: "Profile 4", size },
-                                        MenuItem::Item { label: "Profile 5", size },
+                                        MenuItem::Item(Item::new("Profile 3").size(size)),
+                                        MenuItem::Item(Item::new("Profile 4").size(size)),
+                                        MenuItem::Item(Item::new("Profile 5").size(size)),
                                     ],
                                     ..Default::default()
                                 },
@@ -150,7 +150,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     config: MenuConfig {
                         width: iced::Length::Fixed(240.0),
                         items: vec![
-                            MenuItem::Item { label: "~/document/iced_menu", size },
+                            MenuItem::Item(Item::new("~/document/iced_menu").size(size)),
                         ],
                         ..Default::default()
                     },
@@ -172,9 +172,9 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     config: MenuConfig {
                         width: iced::Length::Fixed(240.0),
                         items: vec![
-                            MenuItem::Item { label: "Copy vscode.dec Link", size },
+                            MenuItem::Item(Item::new("Copy vscode.dec Link").size(size)),
                             MenuItem::Element(Rc::new(separator())),
-                            MenuItem::Item { label: "Export Profile (default)", size },
+                            MenuItem::Item(Item::new("Export Profile (default)").size(size)),
                         ],
                         ..Default::default()
                     },
@@ -233,8 +233,8 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     config: MenuConfig {
                         width: iced::Length::Fixed(250.0),
                         items: vec![
-                            MenuItem::Item { label: "Copy Remote File URL", size },
-                            MenuItem::Item { label: "Copy Remote File URL from...", size },
+                            MenuItem::Item(Item::new("Copy Remote File URL").size(size)),
+                            MenuItem::Item(Item::new("Copy Remote File URL from...").size(size)),
                         ],
                         ..Default::default()
                     },
