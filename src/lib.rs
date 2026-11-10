@@ -882,7 +882,10 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
         }
     }).collect();
 
-    container(column(buttons).spacing(config.spacing))
+    container(
+        column(buttons)
+                .spacing(config.spacing)
+        )
         .width(config.width)
         .boxed()
 }

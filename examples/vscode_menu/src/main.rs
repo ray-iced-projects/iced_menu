@@ -93,13 +93,11 @@ impl App {
 }
 
 fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
-    let size = 13.0;
-    let label_size = 13.0;
+    
     vec![        
         MenuConfig {
             label: "File",
-            label_size,
-            width: iced::Length::Fixed(300.0),
+            width: iced::Length::Fixed(315.0),
             items: vec![
                 MenuItem::Element(
                     Rc::new(
@@ -115,17 +113,16 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     config: MenuConfig {
                         width: iced::Length::Fixed(200.0),
                         items: vec![
-                            MenuItem::Item(Item::new("Profile 1").size(size)),
-                            MenuItem::Item(Item::new("Profile 2").size(size)),
+                            MenuItem::Item(Item::new("Profile 1")),
+                            MenuItem::Item(Item::new("Profile 2")),
                             MenuItem::SubMenu {
                                 config: MenuConfig {
                                     label: "Additional Profiles >",
                                     width: iced::Length::Fixed(100.0),
-                                    label_size,
                                     items: vec![
-                                        MenuItem::Item(Item::new("Profile 3").size(size)),
-                                        MenuItem::Item(Item::new("Profile 4").size(size)),
-                                        MenuItem::Item(Item::new("Profile 5").size(size)),
+                                        MenuItem::Item(Item::new("Profile 3")),
+                                        MenuItem::Item(Item::new("Profile 4")),
+                                        MenuItem::Item(Item::new("Profile 5")),
                                     ],
                                     ..Default::default()
                                 },
@@ -150,7 +147,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     config: MenuConfig {
                         width: iced::Length::Fixed(240.0),
                         items: vec![
-                            MenuItem::Item(Item::new("~/document/iced_menu").size(size)),
+                            MenuItem::Item(Item::new("~/document/iced_menu")),
                         ],
                         ..Default::default()
                     },
@@ -172,9 +169,9 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     config: MenuConfig {
                         width: iced::Length::Fixed(240.0),
                         items: vec![
-                            MenuItem::Item(Item::new("Copy vscode.dec Link").size(size)),
+                            MenuItem::Item(Item::new("Copy vscode.dec Link")),
                             MenuItem::Element(Rc::new(separator())),
-                            MenuItem::Item(Item::new("Export Profile (default)").size(size)),
+                            MenuItem::Item(Item::new("Export Profile (default)")),
                         ],
                         ..Default::default()
                     },
@@ -233,8 +230,8 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     config: MenuConfig {
                         width: iced::Length::Fixed(250.0),
                         items: vec![
-                            MenuItem::Item(Item::new("Copy Remote File URL").size(size)),
-                            MenuItem::Item(Item::new("Copy Remote File URL from...").size(size)),
+                            MenuItem::Item(Item::new("Copy Remote File URL")),
+                            MenuItem::Item(Item::new("Copy Remote File URL from...")),
                         ],
                         ..Default::default()
                     },
@@ -261,37 +258,31 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
         },
         MenuConfig {
             label: "Selection",
-            label_size,
             width: iced::Length::Fixed(0.0),
             ..Default::default()
         },
         MenuConfig {
             label: "View",
-            label_size,
             width: iced::Length::Fixed(0.0),
             ..Default::default()
         },
         MenuConfig {
             label: "Go",
-            label_size,
             width: iced::Length::Fixed(0.0),
             ..Default::default()
         },
         MenuConfig {
             label: "Run",
-            label_size,
             width: iced::Length::Fixed(0.0),
             ..Default::default()
         },
         MenuConfig {
             label: "Terminal",
-            label_size,
             width: iced::Length::Fixed(0.0),
             ..Default::default()
         },
         MenuConfig {
             label: "Help",
-            label_size,
             width: iced::Length::Fixed(0.0),
             ..Default::default()
         },
@@ -310,12 +301,13 @@ fn menu_row(
     keys: Option<String>, 
     arrow: Option<String>,
 ) -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
-    let size = 13.0;
+    let size = 12.0;
     move || {
         let chk = if checked.is_some() {
             widget::checkbox(checked.unwrap())
             .on_toggle(|b| MenuMessage::Custom(MenuAction::SetAutoSave(b)))
-            .width(20.0)
+            .spacing(0.0)
+            .label(" ")
             .boxed()
         } else {
             widget::space().width(20.0).boxed()
@@ -324,7 +316,7 @@ fn menu_row(
         let lbl = 
             widget::text(label.clone())
             .size(size)
-            .width(Length::Fill)
+            .width(150.0)
             .boxed();
 
         let ctrl = 
@@ -332,30 +324,31 @@ fn menu_row(
             widget::text(keys.clone().unwrap())
             .size(size)
             .align_x(Alignment::End)
-            .width(Length::Fill)
+            .width(115.0)
             .boxed()
         } else {
-            widget::space().boxed()
+            widget::text("          ").boxed()
         };
 
     let arr = 
         if arrow.is_some() {
             widget::text(">")
             .size(size)
-            .align_x(Alignment::End)
             .width(25.0)
             .boxed()
         } else {
             widget::space().width(25.0).boxed()
         };
-
+    
+    // Build the row with fixed total width to preserve column widths
     let rw_btn = 
         widget::row(vec![lbl, ctrl, arr])
         .align_y(Vertical::Center)
-        .width(Length::Fill)
+        .width(Length::Fixed(290.0))
         .boxed();
 
-    let btn = 
+    // Place the row into the button
+    let btn_row = 
         widget::button(rw_btn)
             .on_press(MenuMessage::Custom(MenuAction::DoAction(label.clone())))
             .padding(0.0)
@@ -363,10 +356,9 @@ fn menu_row(
                 widget::button::text(theme, status))
             .width(Length::Fill)
             .boxed();
-
+    // The final row [chk/space, button with row label]
     let rw = 
-        widget::row(vec![chk, btn])
-        .spacing(10.0)
+        widget::row(vec![chk, btn_row])
         .align_y(Vertical::Center)
         .width(Length::Fill)
         .boxed();
@@ -380,7 +372,7 @@ fn menu_row(
 /// Matches the visual layout of menu_row: spacer | label (fill) | ">" arrow.
 fn sub_menu_row(label: &'static str) -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
     move || {
-        let size = 14.0;
+        let size = 12.0;
         let spc = widget::space().width(20.0).boxed();
         let lbl = widget::text(label).size(size).width(Length::Fill).boxed();
         let arr = widget::text(">").size(size).align_x(Alignment::End).width(25.0).boxed();
