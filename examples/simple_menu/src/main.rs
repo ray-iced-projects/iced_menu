@@ -148,7 +148,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::Item(Item::new("Paste")),
                 MenuItem::SubMenu {
                     config: MenuConfig {
-                        label: "Find       >",
+                        label: "Find                >",
                         items: vec![
                             MenuItem::Item(Item::new("Find")),
                             MenuItem::Item(Item::new("Find Next")),

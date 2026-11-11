@@ -356,7 +356,7 @@ fn menu_row(
                 widget::button::text(theme, status))
             .width(Fill)
             .boxed();
-    let btn_row = container(btn_row).style(container::bordered_box).boxed();
+
     // The final row [chk/space, button with row label]
     let rw = 
         widget::row(vec![chk, btn_row])
