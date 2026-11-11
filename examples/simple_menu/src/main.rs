@@ -1,7 +1,6 @@
-
-use iced_menu::{Menu, MenuMessage, MenuConfig, MenuItem, MenuTooltip, Item};
-use iced::widget::container;
+use iced::widget::{container, text, tooltip};
 use iced::{Element, Padding, Task, Theme, Widget, window};
+use iced_menu::{Item, Menu, MenuConfig, MenuItem, MenuMessage};
 use std::rc::Rc;
 
 pub fn main() -> iced::Result {
@@ -40,15 +39,11 @@ impl App {
         let mut menu = Menu::default();
         menu.configs = configs;
         menu.is_open = vec![false; len];
-        Self {
-            menu,
-            state,
-        }
+        Self { menu, state }
     }
 }
 
 impl App {
-    
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Menu(mm) => match mm {
@@ -72,23 +67,20 @@ impl App {
                         println!("Dark mode: {}", self.state.is_dark_mode);
                         Task::none()
                     }
-                }
-                _ => self.menu.update(mm).map(Message::Menu)
-            }
+                },
+                _ => self.menu.update(mm).map(Message::Menu),
+            },
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
         let menu = self.menu.construct_menu().map(Message::Menu);
-        container(menu)
-            .padding(10.0)
-            .boxed()
+        container(menu).padding(10.0).boxed()
     }
 }
 
 fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
-
-    vec![        
+    vec![
         MenuConfig {
             label: "File",
             items: vec![
@@ -122,9 +114,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::SubMenu {
                     config: MenuConfig {
                         label: "Open Recent                            >",
-                        items: vec![
-                            MenuItem::Item(Item::new("~/document/iced_menu")),
-                        ],
+                        items: vec![MenuItem::Item(Item::new("~/document/iced_menu"))],
                         ..Default::default()
                     },
                 },
@@ -176,23 +166,25 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                     let tooltip_label: &'static str =
                         Box::leak(format!("{signature}\n{description}").into_boxed_str());
 
-                    MenuItem::Item(Item::new(name).tooltip(MenuTooltip {
-                        label: tooltip_label,
-                        position: iced::widget::tooltip::Position::Right,
-                    }))
+                    MenuItem::Item(Item::new(name).tooltip(Rc::new(move |content| {
+                        tooltip(
+                            content,
+                            container(text(tooltip_label).size(12.0))
+                                .padding(8.0).style(container::rounded_box),
+                            iced::widget::tooltip::Position::Right,
+                        )
+                        .boxed()
+                    })))
                 })
                 .collect(),
             ..Default::default()
-        }
+        },
     ]
 }
 
 fn separator() -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
-    || {
-        iced::widget::rule::horizontal(2.0).boxed()
-    }
+    || iced::widget::rule::horizontal(2.0).boxed()
 }
-
 
 fn dark_mode_toggle(checked: bool) -> impl Fn() -> Element<'static, MenuMessage<MenuAction>> {
     move || {
@@ -215,8 +207,12 @@ fn functions() -> Vec<(&'static str, &'static str, &'static str)> {
         ("ASIN", "ASIN(number)", "Arcsine in radians."),
         ("ASINH", "ASINH(number)", "Inverse hyperbolic sine."),
         ("ATAN", "ATAN(number)", "Arctangent in radians."),
-        ("ATAN2", "ATAN2(x_num, y_num)", "Angle of the point (x, y) from the x-axis in radians."),
+        (
+            "ATAN2",
+            "ATAN2(x_num, y_num)",
+            "Angle of the point (x, y) from the x-axis in radians.",
+        ),
         ("ATANH", "ATANH(number)", "Inverse hyperbolic tangent."),
-        ];
+    ];
     fs
 }

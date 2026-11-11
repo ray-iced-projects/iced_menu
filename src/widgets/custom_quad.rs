@@ -5,7 +5,6 @@ use iced::advanced::widget::{self, Widget};
 use iced::mouse;
 use iced::{Border, Color, Length, Rectangle, Shadow, Size};
 
-
 #[derive(Debug, Default)]
 pub struct CustomQuad {
     pub width: f32,
@@ -16,14 +15,9 @@ pub struct CustomQuad {
     pub snap: bool,
 }
 
-impl CustomQuad
-{
+impl CustomQuad {
     #[allow(dead_code)]
-    pub fn new(
-        width: f32,
-        height: f32,
-        fill_color: Color,
-    ) -> Self {
+    pub fn new(width: f32, height: f32, fill_color: Color) -> Self {
         Self {
             width,
             height,
@@ -55,7 +49,6 @@ impl CustomQuad
         self.snap = snap;
         self
     }
-
 }
 
 impl widget::Meta for CustomQuad {}
@@ -71,12 +64,7 @@ where
         }
     }
 
-    fn layout(
-        &mut self,
-        tree: &mut widget::Tree,
-        _renderer: &Renderer,
-        _limits: &layout::Limits,
-    ) {
+    fn layout(&mut self, tree: &mut widget::Tree, _renderer: &Renderer, _limits: &layout::Limits) {
         tree.size = Size::new(self.width, self.height);
     }
 

@@ -35,7 +35,10 @@ use iced::advanced::widget::Operation;
 use iced::advanced::widget::tree::{self, Tree};
 use iced::mouse;
 use iced::overlay;
-use iced::{Element, Event, Length, Rectangle, Size, Vector, advanced::Layout, advanced::Shell, advanced::Widget};
+use iced::{
+    Element, Event, Length, Rectangle, Size, Vector, advanced::Layout, advanced::Shell,
+    advanced::Widget,
+};
 
 /// Wraps the given widget and captures any mouse button presses inside the bounds of
 /// the widget—effectively making it _opaque_.
@@ -93,7 +96,8 @@ impl<Message, Theme, Renderer> iced::advanced::widget::Meta for Opaque<'_, Messa
 {
 }
 
-impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Opaque<'_, Message, Theme, Renderer>
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer>
+    for Opaque<'_, Message, Theme, Renderer>
 where
     Renderer: iced::advanced::Renderer,
 {
@@ -139,7 +143,8 @@ where
         renderer: &Renderer,
         operation: &mut dyn Operation,
     ) {
-        self.content.operate(tree, layout, viewport, renderer, operation);
+        self.content
+            .operate(tree, layout, viewport, renderer, operation);
     }
 
     fn update(
@@ -170,7 +175,9 @@ where
         viewport: &Rectangle,
         renderer: &Renderer,
     ) -> mouse::Interaction {
-        let interaction = self.content.mouse_interaction(tree, layout, cursor, viewport, renderer);
+        let interaction = self
+            .content
+            .mouse_interaction(tree, layout, cursor, viewport, renderer);
 
         if interaction == mouse::Interaction::None && cursor.is_over(layout.bounds()) {
             mouse::Interaction::Idle
@@ -193,7 +200,8 @@ where
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<Opaque<'a, Message, Theme, Renderer>> for Element<'a, Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer> From<Opaque<'a, Message, Theme, Renderer>>
+    for Element<'a, Message, Theme, Renderer>
 where
     Message: 'a + Clone,
     Theme: 'a,

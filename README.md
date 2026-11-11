@@ -18,11 +18,16 @@ Define menus using the `MenuItem` enum:
 
 ```rust
 MenuItem::Item { label: "Label", size: 14.0 }  // Regular menu item
-MenuItem::ItemWithTooltip {
-  label: "Save",
-  size: 14.0,
-  tooltip: MenuTooltip { label: "Save current file", position: iced::widget::tooltip::Position::FollowCursor }
-}  // Regular menu item with tooltip
+MenuItem::Item(
+  Item::new("Save").tooltip(Rc::new(|content| {
+    iced::widget::tooltip(
+      content,
+      iced::widget::container(iced::widget::text("Save current file")),
+      iced::widget::tooltip::Position::FollowCursor,
+    )
+    .into()
+  }))
+)  // Regular menu item with tooltip
 MenuItem::SubMenu { config: MenuConfig { label: "Submenu >", items: vec![...], ..Default::default() } }  // Submenu with children
 MenuItem::Element(Rc::new(|| widget))  // Custom widget (e.g., separator)
 ```
@@ -32,10 +37,14 @@ You can also attach tooltips to submenu triggers through `MenuConfig`:
 ```rust
 MenuConfig {
   label: "File",
-  tooltip: Some(MenuTooltip {
-    label: "File actions",
-    position: iced::widget::tooltip::Position::Bottom,
-  }),
+  tooltip: Some(Rc::new(|content| {
+    iced::widget::tooltip(
+      content,
+      iced::widget::container(iced::widget::text("File actions")),
+      iced::widget::tooltip::Position::Bottom,
+    )
+    .into()
+  })),
   ..Default::default()
 }
 ```

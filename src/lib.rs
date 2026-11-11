@@ -47,7 +47,7 @@
 //! # Menu Items
 //!
 //! - **`Item`**: Simple text label with press handling
-//! - **`ItemWithTooltip`**: Text item with a tooltip
+//! - **`Item` + tooltip wrapper**: Text item with any iced tooltip widget
 //! - **`SubMenu`**: Dropdown with children, uses default label rendering
 //! - **`SubElement`**: Dropdown with custom trigger content (for complex layouts)
 //! - **`Element`**: Arbitrary widget (separators, checkboxes, custom layouts)
@@ -58,15 +58,13 @@
 //! The menu handles all hover timing, submenu open/close logic internally.
 //!
 
-use iced::widget::{button, column, container, mouse_area, row, scrollable, text, tooltip};
+use iced::widget::{button, column, container, mouse_area, row, scrollable, text};
 use iced::{Alignment, Element, Padding, Task, Theme, Widget};
-use iced::widget::tooltip::Position as TooltipPosition;
-use std::time::{Duration, Instant};
 use std::rc::Rc;
+use std::time::{Duration, Instant};
 
 mod widgets;
 use crate::widgets::popover::{Popover, Position};
-
 
 #[derive(Clone)]
 /// Configuration for a menu or submenu dropdown.
@@ -100,7 +98,7 @@ pub struct MenuConfig<'a, UserMsg = ()> {
     pub spacing: f32,
     pub position: Option<Position>,
     pub align: Option<Alignment>,
-    pub tooltip: Option<MenuTooltip<'a>>,
+    pub tooltip: Option<TooltipWrapper<'a, UserMsg>>,
     pub scrollable_height: Option<f32>,
     pub outside_close_delay: Option<Duration>,
     pub padding: Padding,
@@ -136,13 +134,17 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
 ///   MenuItem::Item { label: "Save", }
 ///   ```
 ///
-/// - **`ItemWithTooltip`**: A clickable menu entry with a tooltip
+/// - **`Item` with `tooltip(...)`**: A clickable menu entry with a tooltip
 ///   ```ignore
-///   MenuItem::ItemWithTooltip {
-///       label: "Save",
-///       size: 14.0,
-///       tooltip: MenuTooltip { label: "Save current file", position: iced::widget::tooltip::Position::FollowCursor },
-///   }
+///   use std::rc::Rc;
+///   Item::new("Save").tooltip(Rc::new(|content| {
+///       iced::widget::tooltip(
+///           content,
+///           iced::widget::container(iced::widget::text("Save current file")),
+///           iced::widget::tooltip::Position::FollowCursor,
+///       )
+///       .into()
+///   }))
 ///   ```
 ///
 /// - **`SubMenu`**: A dropdown trigger with automatic label rendering
@@ -170,7 +172,7 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
 ///   MenuItem::Element(Rc::new(|| iced::widget::rule::horizontal(2.0).boxed()))
 ///   ```
 pub enum MenuItem<'a, UserMsg = ()> {
-    Item(Item<'a>),
+    Item(Item<'a, UserMsg>),
     SubMenu {
         config: MenuConfig<'a, UserMsg>,
     },
@@ -193,18 +195,25 @@ pub enum MenuItem<'a, UserMsg = ()> {
 /// vec![
 ///     Item::new("Save").size(14.0),
 ///     Item::new("Copy").padding(5.0),
-///     Item::new("Help").tooltip(MenuTooltip { label: "Get help", position: ... }),
+///     Item::new("Help").tooltip(std::rc::Rc::new(|content| {
+///         iced::widget::tooltip(
+///             content,
+///             iced::widget::container(iced::widget::text("Get help")),
+///             iced::widget::tooltip::Position::Bottom,
+///         )
+///         .into()
+///     })),
 /// ]
 /// ```
-#[derive(Debug, Clone, Copy)]
-pub struct Item<'a> {
+#[derive(Clone)]
+pub struct Item<'a, UserMsg = ()> {
     pub label: &'a str,
     pub size: f32,
     pub padding: Padding,
-    pub tooltip: Option<MenuTooltip<'a>>,
+    pub tooltip: Option<TooltipWrapper<'a, UserMsg>>,
 }
 
-impl<'a> Item<'a> {
+impl<'a, UserMsg> Item<'a, UserMsg> {
     /// Create a new menu item with just a label.
     ///
     /// Defaults: size=12.0, padding=0.0, tooltip=None
@@ -236,57 +245,31 @@ impl<'a> Item<'a> {
     }
 
     /// Set an optional tooltip.
-    pub fn tooltip(mut self, tooltip: MenuTooltip<'a>) -> Self {
+    pub fn tooltip(mut self, tooltip: TooltipWrapper<'a, UserMsg>) -> Self {
         self.tooltip = Some(tooltip);
         self
     }
 }
 
-impl<'a> From<Item<'a>> for MenuItem<'a> {
-    fn from(item: Item<'a>) -> Self {
+impl<'a, UserMsg> From<Item<'a, UserMsg>> for MenuItem<'a, UserMsg> {
+    fn from(item: Item<'a, UserMsg>) -> Self {
         MenuItem::Item(item)
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-/// Tooltip configuration for a menu item.
-pub struct MenuTooltip<'a> {
-    pub label: &'a str,
-    pub position: TooltipPosition,
-}
+/// Wrapper that receives menu content and returns the final tooltip widget.
+pub type TooltipWrapper<'a, UserMsg = ()> =
+    Rc<dyn Fn(Element<'a, MenuMessage<UserMsg>>) -> Element<'a, MenuMessage<UserMsg>> + 'a>;
 
 fn wrap_with_tooltip<'a, UserMsg: Clone + 'a>(
     content: Element<'a, MenuMessage<UserMsg>>,
-    tooltip_config: Option<MenuTooltip<'a>>,
+    tooltip_config: Option<&TooltipWrapper<'a, UserMsg>>,
 ) -> Element<'a, MenuMessage<UserMsg>> {
     match tooltip_config {
-        Some(config) => tooltip(
-            content,
-            container(text(config.label))
-                .padding(8.0)
-                .style(subtle_tooltip_style),
-            config.position,
-        )
-        .boxed(),
+        Some(config) => config.as_ref()(content),
         None => content,
     }
 }
-
-fn subtle_tooltip_style(theme: &Theme) -> iced::widget::container::Style {
-    let palette = theme.palette();
-
-    iced::widget::container::Style {
-        background: Some(palette.background.weakest.color.into()),
-        text_color: Some(palette.background.weakest.text),
-        border: iced::Border {
-            width: 1.0,
-            radius: 5.0.into(),
-            color: palette.background.weak.color,
-        },
-        ..iced::widget::container::Style::default()
-    }
-}
-
 
 /// Menu state and message handler.
 ///
@@ -356,7 +339,6 @@ impl<'a, UserMsg> Menu<'a, UserMsg> {
     }
 }
 
-
 #[derive(Debug, Clone)]
 /// Messages emitted by menu interactions.
 ///
@@ -389,7 +371,7 @@ pub enum MenuMessage<UserMsg = ()> {
     OpenSubmenuOnHover(Vec<usize>),
     OpenSubmenuTimer(Vec<usize>),
     CancelSubmenuTimer(Vec<usize>),
-    ItemPressed(String, Option<usize>),  // (label, menubar_index)
+    ItemPressed(String, Option<usize>), // (label, menubar_index)
     Custom(UserMsg),
 }
 
@@ -408,7 +390,7 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                 self.pending_menu_close = None;
                 self.menu_close_timer = None;
                 Task::none()
-            },
+            }
             MenuMessage::OpenOnHover(idx) => {
                 self.is_open.iter_mut().for_each(|o| *o = false);
                 self.is_open[idx] = true;
@@ -420,10 +402,11 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                 self.pending_menu_close = None;
                 self.menu_close_timer = None;
                 Task::none()
-            },
+            }
             MenuMessage::StartCloseMenuTimer(idx) => {
                 if self.is_open[idx] {
-                    let delay = self.configs
+                    let delay = self
+                        .configs
                         .get(idx)
                         .and_then(|config| config.outside_close_delay)
                         .unwrap_or(Duration::from_secs(2));
@@ -435,14 +418,14 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                             std::thread::sleep(delay);
                             idx
                         },
-                        |idx| MenuMessage::CloseMenuAfterDelay(idx)
+                        |idx| MenuMessage::CloseMenuAfterDelay(idx),
                     )
                 } else {
                     self.pending_menu_close = None;
                     self.menu_close_timer = None;
                     Task::none()
                 }
-            },
+            }
             MenuMessage::CloseMenuAfterDelay(idx) => {
                 if self.pending_menu_close == Some(idx) {
                     self.is_open[idx] = false;
@@ -451,14 +434,14 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                     self.menu_close_timer = None;
                 }
                 Task::none()
-            },
+            }
             MenuMessage::CancelCloseMenuTimer(idx) => {
                 if self.pending_menu_close == Some(idx) {
                     self.pending_menu_close = None;
                     self.menu_close_timer = None;
                 }
                 Task::none()
-            },
+            }
             MenuMessage::ToggleSubmenu(path) => {
                 if self.open_submenus == path {
                     self.open_submenus.clear();
@@ -468,7 +451,7 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                 self.pending_submenu = None;
                 self.pending_timer = None;
                 Task::none()
-            },
+            }
             MenuMessage::OpenSubmenuOnHover(path) => {
                 let path_clone = path.clone();
                 self.pending_submenu = Some(path.clone());
@@ -480,14 +463,14 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                         self.menu_close_timer = None;
                     }
                 }
-                
+
                 // Cancel any pending close timer for the currently open submenu
                 // This prevents parent from closing when entering a child submenu
                 if self.pending_close == Some(self.open_submenus.clone()) {
                     self.pending_close = None;
                     self.close_timer = None;
                 }
-                
+
                 // Spawn a background task that will send OpenSubmenuTimer after 500ms
                 Task::perform(
                     async move {
@@ -498,16 +481,16 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                         }
                         path_clone
                     },
-                    |path| MenuMessage::OpenSubmenuTimer(path)
+                    |path| MenuMessage::OpenSubmenuTimer(path),
                 )
-            },
+            }
             MenuMessage::CancelSubmenuTimer(path) => {
                 if self.pending_submenu == Some(path) {
                     self.pending_submenu = None;
                     self.pending_timer = None;
                 }
                 Task::none()
-            },
+            }
             MenuMessage::OpenSubmenuTimer(path) => {
                 if self.pending_submenu == Some(path.clone()) {
                     self.open_submenus = path;
@@ -515,25 +498,25 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                     self.pending_timer = None;
                 }
                 Task::none()
-            },
+            }
             MenuMessage::StartCloseSubmenuTimer(path) => {
                 self.pending_close = Some(path.clone());
                 self.close_timer = Some(Instant::now());
-                
+
                 Task::perform(
                     async move {
                         std::thread::sleep(Duration::from_millis(500));
                         path
                     },
-                    |path| MenuMessage::CloseSubmenuAfterDelay(path)
+                    |path| MenuMessage::CloseSubmenuAfterDelay(path),
                 )
-            },
+            }
             MenuMessage::CloseSubmenuAfterDelay(path) => {
                 if self.pending_close == Some(path.clone()) {
                     // If open_submenus starts with our path, it means we're opening something deeper
-                    let is_opening_child = self.open_submenus.len() > path.len() && 
-                        self.open_submenus[0..path.len()] == path[..];
-                    
+                    let is_opening_child = self.open_submenus.len() > path.len()
+                        && self.open_submenus[0..path.len()] == path[..];
+
                     if !is_opening_child {
                         // Only close this submenu and its descendants, not parent submenus
                         // If path is [0, 2], keep [0] open; if path is [0, 2, 2], keep [0, 2] open
@@ -547,13 +530,14 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                     self.close_timer = None;
                 }
                 Task::none()
-            },
+            }
             MenuMessage::CancelCloseSubmenuTimer(path) => {
                 // Cancel the timer if it matches this path, or if this path is an ancestor
                 // of the pending close (moving from child back into parent area)
                 if let Some(pending) = &self.pending_close {
-                    if *pending == path || 
-                        (pending.len() > path.len() && pending[0..path.len()] == path[..]) {
+                    if *pending == path
+                        || (pending.len() > path.len() && pending[0..path.len()] == path[..])
+                    {
                         self.pending_close = None;
                         self.close_timer = None;
                     }
@@ -566,7 +550,7 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                     }
                 }
                 Task::none()
-            },
+            }
             MenuMessage::CloseSubmenu(_path) => {
                 self.open_submenus.clear();
                 self.pending_submenu = None;
@@ -574,15 +558,15 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
                 self.pending_close = None;
                 self.close_timer = None;
                 Task::none()
-            },
+            }
             MenuMessage::ItemPressed(_label, _menubar_index) => {
                 // Let the application handle item presses
                 Task::none()
-            },
+            }
             MenuMessage::Custom(_) => {
                 // Let the application handle custom widget messages
                 Task::none()
-            },
+            }
         }
     }
 
@@ -608,104 +592,104 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
     /// container(menu).padding(10.0).boxed()
     /// ```
     pub fn get_menu(&'a self) -> Element<'a, MenuMessage<UserMsg>> {
-
         let mut menu_bar = vec![];
-        
+
         for (idx, config) in self.configs.iter().enumerate() {
-            let pop = 
-                if self.is_open[idx] {
-                    let content = menu_with_subpopovers(config, self.open_submenus.clone(), vec![idx], idx);
-                    let popup = mouse_area(content)
-                        .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
-                        .on_exit(MenuMessage::StartCloseMenuTimer(idx))
-                        .boxed();
-                    Some(
-                        container(popup)
-                            .style(|theme: &Theme| container::bordered_box(theme))
-                            .padding(5.0)
-                            .boxed()
-                    )
-                
-            } else { None };
-            
-            let btn = button(text(config.label))
-                    .padding(config.padding)
-                    .on_press(MenuMessage::Close(idx))
-                    .style(move|theme, status|
-                            button::text(theme, status)
-                        )   
+            let pop = if self.is_open[idx] {
+                let content =
+                    menu_with_subpopovers(config, self.open_submenus.clone(), vec![idx], idx);
+                let popup = mouse_area(content)
+                    .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
+                    .on_exit(MenuMessage::StartCloseMenuTimer(idx))
                     .boxed();
+                Some(
+                    container(popup)
+                        .style(|theme: &Theme| container::bordered_box(theme))
+                        .padding(5.0)
+                        .boxed(),
+                )
+            } else {
+                None
+            };
+
+            let btn = button(text(config.label))
+                .padding(config.padding)
+                .on_press(MenuMessage::Close(idx))
+                .style(move |theme, status| button::text(theme, status))
+                .boxed();
 
             let btn_with_mouse = mouse_area(btn)
                 .on_enter(MenuMessage::OpenOnHover(idx))
                 .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
                 .on_exit(MenuMessage::StartCloseMenuTimer(idx))
                 .boxed();
-            
-            menu_bar.push(Popover::new(
-                wrap_with_tooltip(btn_with_mouse, config.tooltip),
-                pop,
-            )
-            .gap(5.0)
-            .position(Position::Bottom)
-            .align(Alignment::Start)
-            .outside_close_delay(config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
-            .on_close(MenuMessage::Close(idx)).boxed());
+
+            menu_bar.push(
+                Popover::new(
+                    wrap_with_tooltip(btn_with_mouse, config.tooltip.as_ref()),
+                    pop,
+                )
+                .gap(5.0)
+                .position(Position::Bottom)
+                .align(Alignment::Start)
+                .outside_close_delay(config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
+                .on_close(MenuMessage::Close(idx))
+                .boxed(),
+            );
         }
-        
+
         row(menu_bar).boxed()
-
     }
-
 }
 
 // Menu construction
 impl<UserMsg: Clone + 'static> Menu<'static, UserMsg> {
     pub fn construct_menu(&self) -> Element<'static, MenuMessage<UserMsg>> {
         let mut menu_bar = vec![];
-        
+
         for (idx, config) in self.configs.iter().enumerate() {
-            let pop = 
-                if self.is_open[idx] {
-                    let content = submenu_with_subpopovers(config, self.open_submenus.clone(), vec![idx], idx);
-                    let popup = mouse_area(content)
-                        .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
-                        .on_exit(MenuMessage::StartCloseMenuTimer(idx))
-                        .boxed();
-                    Some(
-                        container(popup)
-                            .style(|theme: &Theme| container::bordered_box(theme))
-                            .padding(5.0)
-                            .boxed()
-                    )
-                
-            } else { None };
-            let label = 
-                text(config.label).size(config.label_size).boxed();
-            let btn = button(label)
-                    .on_press(MenuMessage::Close(idx))
-                    .style(move|theme, status|
-                            button::text(theme, status)
-                        )   
+            let pop = if self.is_open[idx] {
+                let content =
+                    submenu_with_subpopovers(config, self.open_submenus.clone(), vec![idx], idx);
+                let popup = mouse_area(content)
+                    .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
+                    .on_exit(MenuMessage::StartCloseMenuTimer(idx))
                     .boxed();
+                Some(
+                    container(popup)
+                        .style(|theme: &Theme| container::bordered_box(theme))
+                        .padding(5.0)
+                        .boxed(),
+                )
+            } else {
+                None
+            };
+            let label = text(config.label).size(config.label_size).boxed();
+            let btn = button(label)
+                .on_press(MenuMessage::Close(idx))
+                .style(move |theme, status| button::text(theme, status))
+                .boxed();
 
             let btn_with_mouse = mouse_area(btn)
                 .on_enter(MenuMessage::OpenOnHover(idx))
                 .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
                 .on_exit(MenuMessage::StartCloseMenuTimer(idx))
                 .boxed();
-            
-            menu_bar.push(Popover::new(
-                wrap_with_tooltip(btn_with_mouse, config.tooltip),
-                pop,
-            )
-            .gap(5.0)
-            .position(Position::Bottom)
-            .align(Alignment::Start)
-            .outside_close_delay(config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
-            .on_close(MenuMessage::Close(idx)).boxed());
+
+            menu_bar.push(
+                Popover::new(
+                    wrap_with_tooltip(btn_with_mouse, config.tooltip.as_ref()),
+                    pop,
+                )
+                .gap(5.0)
+                .position(Position::Bottom)
+                .align(Alignment::Start)
+                .outside_close_delay(config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
+                .on_close(MenuMessage::Close(idx))
+                .boxed(),
+            );
         }
-        
+
         row(menu_bar).boxed()
     }
 }
@@ -717,175 +701,186 @@ fn menu_with_subpopovers<'a, UserMsg: Clone + 'a>(
     current_path: Vec<usize>,
     menubar_index: usize,
 ) -> Element<'a, MenuMessage<UserMsg>> {
-    let buttons: Vec<Element<'a, MenuMessage<UserMsg>>> = config.items.iter().enumerate().map(|(idx, item)| {
-        match item {
-            MenuItem::Item(item_data) => {
-                let lbl = 
-                    text(item_data.label).size(item_data.size).boxed();
-                wrap_with_tooltip(
-                    button(lbl)
+    let buttons: Vec<Element<'a, MenuMessage<UserMsg>>> = config
+        .items
+        .iter()
+        .enumerate()
+        .map(|(idx, item)| {
+            match item {
+                MenuItem::Item(item_data) => {
+                    let lbl = text(item_data.label).size(item_data.size).boxed();
+                    wrap_with_tooltip(
+                        button(lbl)
+                            .width(iced::Length::Shrink)
+                            .padding(item_data.padding)
+                            .on_press(MenuMessage::ItemPressed(
+                                item_data.label.to_string(),
+                                Some(menubar_index),
+                            ))
+                            .style(|theme, status| button::text(theme, status))
+                            .boxed(),
+                        item_data.tooltip.as_ref(),
+                    )
+                }
+                MenuItem::Element(f) => f(),
+                MenuItem::SubMenu { config: sub_config } => {
+                    let mut submenu_path = current_path.clone();
+                    submenu_path.push(idx);
+
+                    // A submenu is open if it matches open_submenus or if open_submenus is deeper and this is an ancestor
+                    let is_open = open_submenus == submenu_path
+                        || (open_submenus.len() > submenu_path.len()
+                            && open_submenus[0..submenu_path.len()] == submenu_path[..]);
+
+                    let submenu_content = if is_open {
+                        let content = menu_with_subpopovers(
+                            sub_config,
+                            open_submenus.clone(),
+                            submenu_path.clone(),
+                            menubar_index,
+                        );
+
+                        let leave_path = submenu_path.clone();
+                        let enter_path = submenu_path.clone();
+
+                        // Wrap content in mouse area first, then container for styling
+                        let with_mouse_area = mouse_area(content)
+                            .on_exit(MenuMessage::StartCloseSubmenuTimer(leave_path))
+                            .on_enter(MenuMessage::CancelCloseSubmenuTimer(enter_path))
+                            .boxed();
+
+                        let styled_content = container(with_mouse_area)
+                            .width(sub_config.width)
+                            .style(|theme: &Theme| container::bordered_box(theme))
+                            .padding(5.0)
+                            .boxed();
+
+                        Some(styled_content)
+                    } else {
+                        None
+                    };
+
+                    let toggle_path = submenu_path.clone();
+                    let hover_path = submenu_path.clone();
+                    let exit_path_cancel = submenu_path.clone();
+                    let exit_path_close = submenu_path.clone();
+                    let close_path = submenu_path;
+
+                    let label = text(sub_config.label).size(sub_config.label_size).boxed();
+                    let btn = button(label)
                         .width(iced::Length::Shrink)
-                        .padding(item_data.padding)
-                        .on_press(MenuMessage::ItemPressed(item_data.label.to_string(), Some(menubar_index)))
-                        .style(|theme, status|
-                            button::text(theme, status))
-                        .boxed(),
-                    item_data.tooltip,
-                )
-            }
-            MenuItem::Element(f) => f(),
-            MenuItem::SubMenu { config: sub_config } => {
-                let mut submenu_path = current_path.clone();
-                submenu_path.push(idx);
-                
-                // A submenu is open if it matches open_submenus or if open_submenus is deeper and this is an ancestor
-                let is_open = open_submenus == submenu_path || 
-                    (open_submenus.len() > submenu_path.len() && 
-                    open_submenus[0..submenu_path.len()] == submenu_path[..]);
-                
-                let submenu_content = if is_open {
-                    let content = menu_with_subpopovers(
-                        sub_config,
-                        open_submenus.clone(),
-                        submenu_path.clone(),
-                        menubar_index,
-                    );
-                    
-                    let leave_path = submenu_path.clone();
-                    let enter_path = submenu_path.clone();
-                    
-                    // Wrap content in mouse area first, then container for styling
-                    let with_mouse_area = mouse_area(content)
-                        .on_exit(MenuMessage::StartCloseSubmenuTimer(leave_path))
-                        .on_enter(MenuMessage::CancelCloseSubmenuTimer(enter_path))
+                        .padding(sub_config.padding)
+                        .on_press(MenuMessage::ToggleSubmenu(toggle_path))
+                        .style(|theme, status| button::text(theme, status))
                         .boxed();
-                    
-                    let styled_content = 
-                        container(with_mouse_area)
-                        .width(sub_config.width)
-                        .style(|theme: &Theme| container::bordered_box(theme))
-                        .padding(5.0)
+
+                    let btn_with_mouse = if is_open {
+                        // If submenu is open, exiting the button should start close timer
+                        mouse_area(btn)
+                            .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
+                            .on_exit(MenuMessage::StartCloseSubmenuTimer(exit_path_close))
+                            .boxed()
+                    } else {
+                        // If submenu is not open, exiting the button should cancel open timer
+                        mouse_area(btn)
+                            .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
+                            .on_exit(MenuMessage::CancelSubmenuTimer(exit_path_cancel))
+                            .boxed()
+                    };
+
+                    let trigger = wrap_with_tooltip(btn_with_mouse, sub_config.tooltip.as_ref());
+
+                    Popover::new(trigger, submenu_content)
+                        .position(sub_config.position.unwrap_or(Position::Right))
+                        .align(config.align.unwrap_or(Alignment::Start))
+                        .gap(config.gap.unwrap_or_default())
+                        .outside_close_delay(
+                            sub_config
+                                .outside_close_delay
+                                .unwrap_or(Duration::from_secs(2)),
+                        )
+                        .on_close(MenuMessage::CloseSubmenu(close_path))
+                        .boxed()
+                }
+                MenuItem::SubElement {
+                    content,
+                    config: sub_config,
+                } => {
+                    let mut submenu_path = current_path.clone();
+                    submenu_path.push(idx);
+
+                    let is_open = open_submenus == submenu_path
+                        || (open_submenus.len() > submenu_path.len()
+                            && open_submenus[0..submenu_path.len()] == submenu_path[..]);
+
+                    let submenu_content = if is_open {
+                        let inner = menu_with_subpopovers(
+                            sub_config,
+                            open_submenus.clone(),
+                            submenu_path.clone(),
+                            menubar_index,
+                        );
+                        let leave_path = submenu_path.clone();
+                        let enter_path = submenu_path.clone();
+                        let with_mouse_area = mouse_area(inner)
+                            .on_exit(MenuMessage::StartCloseSubmenuTimer(leave_path))
+                            .on_enter(MenuMessage::CancelCloseSubmenuTimer(enter_path))
+                            .boxed();
+                        Some(
+                            container(with_mouse_area)
+                                .width(sub_config.width)
+                                .style(|theme: &Theme| container::bordered_box(theme))
+                                .padding(5.0)
+                                .boxed(),
+                        )
+                    } else {
+                        None
+                    };
+
+                    let toggle_path = submenu_path.clone();
+                    let hover_path = submenu_path.clone();
+                    let exit_path_cancel = submenu_path.clone();
+                    let exit_path_close = submenu_path.clone();
+                    let close_path = submenu_path;
+
+                    let btn = button(content())
+                        .width(iced::Length::Shrink)
+                        .padding(sub_config.padding)
+                        .on_press(MenuMessage::ToggleSubmenu(toggle_path))
+                        .style(|theme, status| button::text(theme, status))
                         .boxed();
-                    
-                    Some(styled_content)
-                } else {
-                    None
-                };
-                
-                let toggle_path = submenu_path.clone();
-                let hover_path = submenu_path.clone();
-                let exit_path_cancel = submenu_path.clone();
-                let exit_path_close = submenu_path.clone();
-                let close_path = submenu_path;
-                
-                let label = 
-                    text(sub_config.label)
-                    .size(sub_config.label_size)
-                    .boxed();
-                let btn = 
-                    button(label)
-                    .width(iced::Length::Shrink)
-                    .padding(sub_config.padding)
-                    .on_press(MenuMessage::ToggleSubmenu(toggle_path))
-                    .style(|theme, status| button::text(theme, status))
-                    .boxed();
-                
-                let btn_with_mouse = if is_open {
-                    // If submenu is open, exiting the button should start close timer
-                    mouse_area(btn)
-                        .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
-                        .on_exit(MenuMessage::StartCloseSubmenuTimer(exit_path_close))
-                        .boxed()
-                } else {
-                    // If submenu is not open, exiting the button should cancel open timer
-                    mouse_area(btn)
-                        .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
-                        .on_exit(MenuMessage::CancelSubmenuTimer(exit_path_cancel))
-                        .boxed()
-                };
-                
-                let trigger = wrap_with_tooltip(btn_with_mouse, sub_config.tooltip);
 
-                Popover::new(trigger, submenu_content)
-                .position(sub_config.position.unwrap_or(Position::Right))
-                .align(config.align.unwrap_or(Alignment::Start))
-                .gap(config.gap.unwrap_or_default())
-                .outside_close_delay(sub_config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
-                .on_close(MenuMessage::CloseSubmenu(close_path))
-                .boxed()
+                    let btn_with_mouse = if is_open {
+                        mouse_area(btn)
+                            .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
+                            .on_exit(MenuMessage::StartCloseSubmenuTimer(exit_path_close))
+                            .boxed()
+                    } else {
+                        mouse_area(btn)
+                            .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
+                            .on_exit(MenuMessage::CancelSubmenuTimer(exit_path_cancel))
+                            .boxed()
+                    };
+
+                    let trigger = wrap_with_tooltip(btn_with_mouse, sub_config.tooltip.as_ref());
+
+                    Popover::new(trigger, submenu_content)
+                        .position(sub_config.position.unwrap_or(Position::Right))
+                        .align(sub_config.align.unwrap_or(Alignment::Start))
+                        .gap(sub_config.gap.unwrap_or_default())
+                        .outside_close_delay(
+                            sub_config
+                                .outside_close_delay
+                                .unwrap_or(Duration::from_secs(2)),
+                        )
+                        .on_close(MenuMessage::CloseSubmenu(close_path))
+                        .boxed()
+                }
             }
-            MenuItem::SubElement { content, config: sub_config } => {
-                let mut submenu_path = current_path.clone();
-                submenu_path.push(idx);
+        })
+        .collect();
 
-                let is_open = open_submenus == submenu_path ||
-                    (open_submenus.len() > submenu_path.len() &&
-                    open_submenus[0..submenu_path.len()] == submenu_path[..]);
-
-                let submenu_content = if is_open {
-                    let inner = menu_with_subpopovers(
-                        sub_config,
-                        open_submenus.clone(),
-                        submenu_path.clone(),
-                        menubar_index,
-                    );
-                    let leave_path = submenu_path.clone();
-                    let enter_path = submenu_path.clone();
-                    let with_mouse_area = mouse_area(inner)
-                        .on_exit(MenuMessage::StartCloseSubmenuTimer(leave_path))
-                        .on_enter(MenuMessage::CancelCloseSubmenuTimer(enter_path))
-                        .boxed();
-                    Some(container(with_mouse_area)
-                        .width(sub_config.width)
-                        .style(|theme: &Theme| container::bordered_box(theme))
-                        .padding(5.0)
-                        .boxed())
-                } else {
-                    None
-                };
-
-                let toggle_path = submenu_path.clone();
-                let hover_path = submenu_path.clone();
-                let exit_path_cancel = submenu_path.clone();
-                let exit_path_close = submenu_path.clone();
-                let close_path = submenu_path;
-
-                let btn = button(content())
-                    .width(iced::Length::Shrink)
-                    .padding(sub_config.padding)
-                    .on_press(MenuMessage::ToggleSubmenu(toggle_path))
-                    .style(|theme, status| button::text(theme, status))
-                    .boxed();
-
-                let btn_with_mouse = if is_open {
-                    mouse_area(btn)
-                        .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
-                        .on_exit(MenuMessage::StartCloseSubmenuTimer(exit_path_close))
-                        .boxed()
-                } else {
-                    mouse_area(btn)
-                        .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
-                        .on_exit(MenuMessage::CancelSubmenuTimer(exit_path_cancel))
-                        .boxed()
-                };
-
-                let trigger = wrap_with_tooltip(btn_with_mouse, sub_config.tooltip);
-
-                Popover::new(trigger, submenu_content)
-                    .position(sub_config.position.unwrap_or(Position::Right))
-                    .align(sub_config.align.unwrap_or(Alignment::Start))
-                    .gap(sub_config.gap.unwrap_or_default())
-                    .outside_close_delay(sub_config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
-                    .on_close(MenuMessage::CloseSubmenu(close_path))
-                    .boxed()
-            }
-        }
-    }).collect();
-
-    container(
-        column(buttons)
-                .spacing(config.spacing)
-        )
+    container(column(buttons).spacing(config.spacing))
         .width(config.width)
         .boxed()
 }
@@ -897,31 +892,35 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
     current_path: Vec<usize>,
     menubar_index: usize,
 ) -> Element<'static, MenuMessage<UserMsg>> {
-    let buttons: Vec<Element<'static, MenuMessage<UserMsg>>> = config.items.iter().enumerate().map(|(idx, item)| {
-        match item {
+    let buttons: Vec<Element<'static, MenuMessage<UserMsg>>> = config
+        .items
+        .iter()
+        .enumerate()
+        .map(|(idx, item)| match item {
             MenuItem::Item(item_data) => {
-                let lbl = 
-                    text(item_data.label).size(item_data.size).boxed();
+                let lbl = text(item_data.label).size(item_data.size).boxed();
                 wrap_with_tooltip(
                     button(lbl)
                         .width(iced::Length::Shrink)
                         .padding(item_data.padding)
-                        .on_press(MenuMessage::ItemPressed(item_data.label.to_string(), Some(menubar_index)))
-                        .style(|theme, status|
-                            button::text(theme, status))
+                        .on_press(MenuMessage::ItemPressed(
+                            item_data.label.to_string(),
+                            Some(menubar_index),
+                        ))
+                        .style(|theme, status| button::text(theme, status))
                         .boxed(),
-                    item_data.tooltip,
+                    item_data.tooltip.as_ref(),
                 )
             }
             MenuItem::Element(f) => f(),
             MenuItem::SubMenu { config: sub_config } => {
                 let mut submenu_path = current_path.clone();
                 submenu_path.push(idx);
-                
-                let is_open = open_submenus == submenu_path || 
-                    (open_submenus.len() > submenu_path.len() && 
-                    open_submenus[0..submenu_path.len()] == submenu_path[..]);
-                
+
+                let is_open = open_submenus == submenu_path
+                    || (open_submenus.len() > submenu_path.len()
+                        && open_submenus[0..submenu_path.len()] == submenu_path[..]);
+
                 let submenu_content = if is_open {
                     let content = submenu_with_subpopovers(
                         sub_config,
@@ -929,45 +928,40 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                         submenu_path.clone(),
                         menubar_index,
                     );
-                    
+
                     let leave_path = submenu_path.clone();
                     let enter_path = submenu_path.clone();
-                    
+
                     let with_mouse_area = mouse_area(content)
                         .on_exit(MenuMessage::StartCloseSubmenuTimer(leave_path))
                         .on_enter(MenuMessage::CancelCloseSubmenuTimer(enter_path))
                         .boxed();
-                    
-                    let styled_content = 
-                        container(with_mouse_area)
+
+                    let styled_content = container(with_mouse_area)
                         .width(sub_config.width)
                         .style(|theme: &Theme| container::bordered_box(theme))
                         .padding(5.0)
                         .boxed();
-                    
+
                     Some(styled_content)
                 } else {
                     None
                 };
-                
+
                 let toggle_path = submenu_path.clone();
                 let hover_path = submenu_path.clone();
                 let exit_path_cancel = submenu_path.clone();
                 let exit_path_close = submenu_path.clone();
                 let close_path = submenu_path;
-                
-                let label = 
-                    text(sub_config.label)
-                    .size(sub_config.label_size)
-                    .boxed();
-                let btn = 
-                    button(label)
+
+                let label = text(sub_config.label).size(sub_config.label_size).boxed();
+                let btn = button(label)
                     .width(iced::Length::Shrink)
                     .padding(sub_config.padding)
                     .on_press(MenuMessage::ToggleSubmenu(toggle_path))
                     .style(|theme, status| button::text(theme, status))
                     .boxed();
-                
+
                 let btn_with_mouse = if is_open {
                     mouse_area(btn)
                         .on_enter(MenuMessage::OpenSubmenuOnHover(hover_path))
@@ -979,24 +973,31 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                         .on_exit(MenuMessage::CancelSubmenuTimer(exit_path_cancel))
                         .boxed()
                 };
-                
-                let trigger = wrap_with_tooltip(btn_with_mouse, sub_config.tooltip);
+
+                let trigger = wrap_with_tooltip(btn_with_mouse, sub_config.tooltip.as_ref());
 
                 Popover::new(trigger, submenu_content)
-                .position(sub_config.position.unwrap_or(Position::Right))
-                .align(sub_config.align.unwrap_or(Alignment::Start))
-                .gap(sub_config.gap.unwrap_or_default())
-                .outside_close_delay(sub_config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
-                .on_close(MenuMessage::CloseSubmenu(close_path))
-                .boxed()
+                    .position(sub_config.position.unwrap_or(Position::Right))
+                    .align(sub_config.align.unwrap_or(Alignment::Start))
+                    .gap(sub_config.gap.unwrap_or_default())
+                    .outside_close_delay(
+                        sub_config
+                            .outside_close_delay
+                            .unwrap_or(Duration::from_secs(2)),
+                    )
+                    .on_close(MenuMessage::CloseSubmenu(close_path))
+                    .boxed()
             }
-            MenuItem::SubElement { content, config: sub_config } => {
+            MenuItem::SubElement {
+                content,
+                config: sub_config,
+            } => {
                 let mut submenu_path = current_path.clone();
                 submenu_path.push(idx);
 
-                let is_open = open_submenus == submenu_path ||
-                    (open_submenus.len() > submenu_path.len() &&
-                    open_submenus[0..submenu_path.len()] == submenu_path[..]);
+                let is_open = open_submenus == submenu_path
+                    || (open_submenus.len() > submenu_path.len()
+                        && open_submenus[0..submenu_path.len()] == submenu_path[..]);
 
                 let submenu_content = if is_open {
                     let inner = submenu_with_subpopovers(
@@ -1011,11 +1012,13 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                         .on_exit(MenuMessage::StartCloseSubmenuTimer(leave_path))
                         .on_enter(MenuMessage::CancelCloseSubmenuTimer(enter_path))
                         .boxed();
-                    Some(container(with_mouse_area)
-                        .width(sub_config.width)
-                        .style(|theme: &Theme| container::bordered_box(theme))
-                        .padding(5.0)
-                        .boxed())
+                    Some(
+                        container(with_mouse_area)
+                            .width(sub_config.width)
+                            .style(|theme: &Theme| container::bordered_box(theme))
+                            .padding(5.0)
+                            .boxed(),
+                    )
                 } else {
                     None
                 };
@@ -1045,18 +1048,22 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
                         .boxed()
                 };
 
-                let trigger = wrap_with_tooltip(btn_with_mouse, sub_config.tooltip);
+                let trigger = wrap_with_tooltip(btn_with_mouse, sub_config.tooltip.as_ref());
 
                 Popover::new(trigger, submenu_content)
                     .position(sub_config.position.unwrap_or(Position::Right))
                     .align(sub_config.align.unwrap_or(Alignment::Start))
                     .gap(sub_config.gap.unwrap_or_default())
-                    .outside_close_delay(sub_config.outside_close_delay.unwrap_or(Duration::from_secs(2)))
+                    .outside_close_delay(
+                        sub_config
+                            .outside_close_delay
+                            .unwrap_or(Duration::from_secs(2)),
+                    )
                     .on_close(MenuMessage::CloseSubmenu(close_path))
                     .boxed()
             }
-        }
-    }).collect();
+        })
+        .collect();
 
     let cont = container(column(buttons).spacing(config.spacing))
         .width(config.width)
@@ -1064,6 +1071,7 @@ fn submenu_with_subpopovers<UserMsg: Clone + 'static>(
 
     if let Some(h) = config.scrollable_height {
         scrollable(cont).height(h).boxed()
-    } else { cont }
-    
+    } else {
+        cont
+    }
 }
