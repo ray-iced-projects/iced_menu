@@ -111,7 +111,7 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
     fn default() -> Self {
         MenuConfig {
             label: "",
-            label_size: 14.0,
+            label_size: 12.0,
             items: Vec::new(),
             width: iced::Length::Shrink,
             gap: None,
@@ -133,7 +133,7 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
 ///
 /// - **`Item`**: A clickable menu entry with label and font size
 ///   ```ignore
-///   MenuItem::Item { label: "Save", size: 14.0 }
+///   MenuItem::Item { label: "Save", }
 ///   ```
 ///
 /// - **`ItemWithTooltip`**: A clickable menu entry with a tooltip

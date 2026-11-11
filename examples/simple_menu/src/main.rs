@@ -96,7 +96,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::Item(Item::new("New Window")),
                 MenuItem::SubMenu {
                     config: MenuConfig {
-                        label: "New Window with Profile >",
+                        label: "New Window with Profile      >",
                         items: vec![
                             MenuItem::Item(Item::new("Profile 1")),
                             MenuItem::Item(Item::new("Profile 2")),
@@ -121,7 +121,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::Item(Item::new("Open Wokspace from File")),
                 MenuItem::SubMenu {
                     config: MenuConfig {
-                        label: "Open Recent >",
+                        label: "Open Recent                            >",
                         items: vec![
                             MenuItem::Item(Item::new("~/document/iced_menu")),
                         ],
@@ -148,7 +148,7 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                 MenuItem::Item(Item::new("Paste")),
                 MenuItem::SubMenu {
                     config: MenuConfig {
-                        label: "Find >",
+                        label: "Find       >",
                         items: vec![
                             MenuItem::Item(Item::new("Find")),
                             MenuItem::Item(Item::new("Find Next")),
@@ -166,9 +166,10 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
         },
         MenuConfig {
             label: "Functions",
+            width: iced::Length::Fixed(65.0),
             scrollable_height: Some(150.0),
             spacing: 3.0,
-            padding: Padding::from([0, 20]),
+            padding: Padding::from([5, 10]),
             items: functions()
                 .into_iter()
                 .map(|(name, signature, description)| {
@@ -197,6 +198,8 @@ fn dark_mode_toggle(checked: bool) -> impl Fn() -> Element<'static, MenuMessage<
     move || {
         iced::widget::checkbox(checked)
             .label("Dark Mode")
+            .size(12.0)
+            .text_size(12.0)
             .on_toggle(|b| MenuMessage::Custom(MenuAction::SetDarkMode(b)))
             .boxed()
     }
