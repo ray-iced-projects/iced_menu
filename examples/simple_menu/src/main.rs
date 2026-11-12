@@ -171,8 +171,9 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
                             content,
                             container(text(tooltip_label).size(12.0))
                                 .padding(8.0).style(container::rounded_box),
-                            iced::widget::tooltip::Position::Right,
                         )
+                        .position(iced::widget::tooltip::Position::Right)
+                        .gap(10.0)
                         .boxed()
                     })))
                 })

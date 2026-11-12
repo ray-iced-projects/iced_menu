@@ -10,10 +10,10 @@
 //! application decides to set the `popover` argument to `None` (i.e. to close
 //! it).
 //!
-//! By default, the popover overlay is opaque: mouse button presses inside its
-//! bounds are captured, and mouse events do not pass through it to the layers
-//! below. Use [`Popover::passthrough`] to make the popover overlay
-//! transparent.
+//! By default, the popover overlay is opaque: mouse button presses and wheel
+//! scrolling inside its bounds are captured, and mouse events do not pass
+//! through it to the layers below. Use [`Popover::passthrough`] to make the
+//! popover overlay transparent.
 //!
 //! [`tooltip`]: crate::tooltip::Tooltip
 //!
@@ -46,7 +46,6 @@
 //!     .into()
 //! }
 //! ```
-use super::opaque::Opaque;
 use iced::advanced::Widget as _;
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::overlay;
@@ -54,7 +53,7 @@ use iced::advanced::renderer;
 use iced::advanced::widget::{self as adv_widget};
 use iced::mouse;
 use iced::touch;
-use iced::widget::Widget;
+use iced::widget::{Opaque, Widget};
 use iced::{
     Alignment, Element, Event, Length, Pixels, Point, Rectangle, Size, Vector, advanced::Shell,
 };
@@ -69,10 +68,10 @@ use std::time::{Duration, Instant};
 /// When the user clicks outside of the popover's bounds, the popover notifies
 /// the application through its `on_close` handler.
 ///
-/// By default, the popover overlay is opaque: mouse button presses inside its
-/// bounds are captured, and mouse events do not pass through it to the layers
-/// below. Use [`Popover::passthrough`] to make the popover overlay
-/// transparent.
+/// By default, the popover overlay is opaque: mouse button presses and wheel
+/// scrolling inside its bounds are captured, and mouse events do not pass
+/// through it to the layers below. Use [`Popover::passthrough`] to make the
+/// popover overlay transparent.
 ///
 /// # Example
 /// ```no_run
@@ -138,7 +137,7 @@ where
     ) -> Self {
         Popover {
             content: content.into(),
-            popup: popover.map(|popup| Popup::Opaque(Opaque::new(popup))),
+            popup: popover.map(|popup| Popup::Opaque(Opaque::new(popup.into()).capture_scroll(true))),
             position: Position::default(),
             align: Alignment::Start,
             gap: 0.0,
@@ -204,7 +203,9 @@ where
     pub fn passthrough(mut self, passthrough: bool) -> Self {
         self.popup = self.popup.map(|popover| match popover {
             Popup::Opaque(opaque) if passthrough => Popup::Transparent(opaque.into_inner()),
-            Popup::Transparent(element) if !passthrough => Popup::Opaque(Opaque::new(element)),
+            Popup::Transparent(element) if !passthrough => {
+                Popup::Opaque(Opaque::new(element).capture_scroll(true))
+            }
             content => content,
         });
 
@@ -413,7 +414,7 @@ where
 }
 
 enum Popup<'a, Message, Theme, Renderer> {
-    Opaque(Opaque<'a, Message, Theme, Renderer>),
+    Opaque(Opaque<Element<'a, Message, Theme, Renderer>>),
     Transparent(Element<'a, Message, Theme, Renderer>),
 }
 
