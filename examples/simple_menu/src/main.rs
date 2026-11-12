@@ -1,4 +1,4 @@
-use iced::widget::{container, text, tooltip};
+use iced::widget::{container, column, scrollable, text, tooltip};
 use iced::{Element, Padding, Task, Theme, Widget, window};
 use iced_menu::{Item, Menu, MenuConfig, MenuItem, MenuMessage};
 use std::rc::Rc;
@@ -75,7 +75,16 @@ impl App {
 
     fn view(&self) -> Element<'_, Message> {
         let menu = self.menu.construct_menu().map(Message::Menu);
-        container(menu).padding(10.0).boxed()
+
+        let scroll_text = 
+        scrollable(column((0..50).map(|n| text(format!("scroll test {}", n)).width(200.0)))
+            .spacing(2.0))
+            .height(300.0)
+            .boxed();
+
+        let col = column![menu, scroll_text].boxed();
+
+        container(col).padding(10.0).boxed()
     }
 }
 
