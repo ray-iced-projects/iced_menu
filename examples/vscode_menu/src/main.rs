@@ -451,6 +451,24 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
             label: "Help",
             ..Default::default()
         },
+        // When trigger is used, any widget can be used which is wrapped in a mouse area.
+        MenuConfig {
+            label: "Right Click Test",
+            trigger: Some(Rc::new(|| {
+                container(widget::text("Right Click Test").size(12.0))
+                    .padding([3, 8])
+                    .boxed()
+            })),
+            open_on_left_click: Some(false),
+            open_on_right_click: Some(true),
+            items: vec![
+                MenuItem::Item(Item::new("First test item")),
+                MenuItem::Item(Item::new("Second test item")),
+                MenuItem::Item(Item::new("Third test item")),
+                MenuItem::Item(Item::new("Fourth test item")),
+            ],
+            ..Default::default()
+        },
     ]
 }
 

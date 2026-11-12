@@ -78,6 +78,9 @@ use crate::widgets::popover::{Popover, Position};
 /// - `position`: Where the popover opens (Right, Left, Top, Bottom)
 /// - `align`: Vertical/horizontal alignment of popover content
 /// - `tooltip`: Optional tooltip shown when hovering the trigger item
+/// - `trigger`: Optional custom top-level trigger element (instead of default button)
+/// - `open_on_left_click`: Optional left-click open/toggle behavior (`Some(true|false)`)
+/// - `open_on_right_click`: Optional right-click open behavior (`Some(true|false)`)
 ///
 /// # Example
 /// ```ignore
@@ -99,6 +102,9 @@ pub struct MenuConfig<'a, UserMsg = ()> {
     pub position: Option<Position>,
     pub align: Option<Alignment>,
     pub tooltip: Option<TooltipWrapper<'a, UserMsg>>,
+    pub trigger: Option<TriggerElement<'a, UserMsg>>,
+    pub open_on_left_click: Option<bool>,
+    pub open_on_right_click: Option<bool>,
     pub scrollable_height: Option<f32>,
     pub outside_close_delay: Option<Duration>,
     pub padding: Padding,
@@ -117,6 +123,9 @@ impl<'a, UserMsg> Default for MenuConfig<'a, UserMsg> {
             position: None,
             align: None,
             tooltip: None,
+            trigger: None,
+            open_on_left_click: Some(true),
+            open_on_right_click: Some(false),
             scrollable_height: None,
             outside_close_delay: Some(Duration::from_secs(1)),
             padding: Padding::new(0.0),
@@ -260,6 +269,9 @@ impl<'a, UserMsg> From<Item<'a, UserMsg>> for MenuItem<'a, UserMsg> {
 /// Wrapper that receives menu content and returns the final tooltip widget.
 pub type TooltipWrapper<'a, UserMsg = ()> =
     Rc<dyn Fn(Element<'a, MenuMessage<UserMsg>>) -> Element<'a, MenuMessage<UserMsg>> + 'a>;
+
+pub type TriggerElement<'a, UserMsg = ()> =
+    Rc<dyn Fn() -> Element<'a, MenuMessage<UserMsg>> + 'a>;
 
 fn wrap_with_tooltip<'a, UserMsg: Clone + 'a>(
     content: Element<'a, MenuMessage<UserMsg>>,
@@ -614,15 +626,35 @@ impl<'a, UserMsg: Clone + Send + 'static> Menu<'a, UserMsg> {
 
             let btn = button(text(config.label))
                 .padding(config.padding)
-                .on_press(MenuMessage::Close(idx))
                 .style(move |theme, status| button::text(theme, status))
                 .boxed();
 
-            let btn_with_mouse = mouse_area(btn)
-                .on_enter(MenuMessage::OpenOnHover(idx))
-                .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
-                .on_exit(MenuMessage::StartCloseMenuTimer(idx))
-                .boxed();
+            let trigger = config
+                .trigger
+                .as_ref()
+                .map(|trigger| trigger())
+                .unwrap_or(btn);
+
+            let btn_with_mouse = {
+                let trigger_area = mouse_area(trigger)
+                    .on_enter(MenuMessage::OpenOnHover(idx))
+                    .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
+                    .on_exit(MenuMessage::StartCloseMenuTimer(idx));
+
+                let trigger_area = if config.open_on_left_click.unwrap_or(true) {
+                    trigger_area.on_press(MenuMessage::Close(idx))
+                } else {
+                    trigger_area
+                };
+
+                let trigger_area = if config.open_on_right_click.unwrap_or(false) {
+                    trigger_area.on_right_press(MenuMessage::OpenOnHover(idx))
+                } else {
+                    trigger_area
+                };
+
+                trigger_area.boxed()
+            };
 
             menu_bar.push(
                 Popover::new(
@@ -666,15 +698,35 @@ impl<UserMsg: Clone + 'static> Menu<'static, UserMsg> {
             };
             let label = text(config.label).size(config.label_size).boxed();
             let btn = button(label)
-                .on_press(MenuMessage::Close(idx))
                 .style(move |theme, status| button::text(theme, status))
                 .boxed();
 
-            let btn_with_mouse = mouse_area(btn)
-                .on_enter(MenuMessage::OpenOnHover(idx))
-                .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
-                .on_exit(MenuMessage::StartCloseMenuTimer(idx))
-                .boxed();
+            let trigger = config
+                .trigger
+                .as_ref()
+                .map(|trigger| trigger())
+                .unwrap_or(btn);
+
+            let btn_with_mouse = {
+                let trigger_area = mouse_area(trigger)
+                    .on_enter(MenuMessage::OpenOnHover(idx))
+                    .on_enter(MenuMessage::CancelCloseMenuTimer(idx))
+                    .on_exit(MenuMessage::StartCloseMenuTimer(idx));
+
+                let trigger_area = if config.open_on_left_click.unwrap_or(true) {
+                    trigger_area.on_press(MenuMessage::Close(idx))
+                } else {
+                    trigger_area
+                };
+
+                let trigger_area = if config.open_on_right_click.unwrap_or(false) {
+                    trigger_area.on_right_press(MenuMessage::OpenOnHover(idx))
+                } else {
+                    trigger_area
+                };
+
+                trigger_area.boxed()
+            };
 
             menu_bar.push(
                 Popover::new(

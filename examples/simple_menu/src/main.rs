@@ -76,6 +76,7 @@ impl App {
     fn view(&self) -> Element<'_, Message> {
         let menu = self.menu.construct_menu().map(Message::Menu);
 
+        // The scroller is used to test that the opacity will block the scrolling of the menu dropdown.
         let scroll_text = 
         scrollable(column((0..50).map(|n| text(format!("scroll test {}", n)).width(200.0)))
             .spacing(2.0))
@@ -139,6 +140,12 @@ fn define_menu_configs(state: &State) -> Vec<MenuConfig<'static, MenuAction>> {
         MenuConfig {
             label: "Edit",
             gap: None,
+            trigger: Some(Rc::new(|| {
+                container(text("Edit").size(12.0))
+                    .padding(Padding::from([6, 10]))
+                    .boxed()
+            })),
+            open_on_right_click: Some(true),
             items: vec![
                 MenuItem::Item(Item::new("Undo")),
                 MenuItem::Item(Item::new("Redo")),
